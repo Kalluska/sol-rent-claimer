@@ -1,6 +1,11 @@
 // src/App.tsx
 import { useEffect, useMemo, useState } from "react";
-import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import {
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+} from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -13,187 +18,201 @@ import "./ui.css";
 
 type Lang = "fi" | "en";
 
-type EmptyTokenAccount = {
+type EmptyTokenAcc = {
   pubkey: PublicKey;
-  programId: PublicKey;
+  programId: PublicKey; // TOKEN_PROGRAM_ID or TOKEN_2022_PROGRAM_ID
   mint: PublicKey;
-  lamports: number; // what you get back on close
+  lamports: number;
 };
 
 const WSOL_MINT = new PublicKey("So11111111111111111111111111111111111111112");
 
-// ENV (optional)
-const APP_NAME = import.meta.env.VITE_APP_NAME ?? "Solana Rent Claimer";
-const FEE_RECIPIENT_STR = (import.meta.env.VITE_FEE_RECIPIENT ?? "").trim();
+const APP_NAME = String(import.meta.env.VITE_APP_NAME ?? "Solana Rent Claimer");
+const RPC_URL = String(import.meta.env.VITE_RPC_URL ?? "");
 const FEE_BPS = Number(import.meta.env.VITE_FEE_BPS ?? 300); // 300 = 3.00%
+const FEE_RECIPIENT_STR = String(import.meta.env.VITE_FEE_RECIPIENT ?? "");
+const REPO_URL = String(
+  import.meta.env.VITE_REPO_URL ?? "https://github.com/Kalluska/sol-rent-claimer"
+);
 
-const FEE_RECIPIENT = (() => {
-  try {
-    return FEE_RECIPIENT_STR ? new PublicKey(FEE_RECIPIENT_STR) : null;
-  } catch {
-    return null;
-  }
-})();
+const MAX_ACCOUNTS_PER_TX = 8; // turvallinen oletus
+const EXPLORER_BASE = "https://solscan.io/tx/";
 
 const TEXT: Record<Lang, any> = {
   fi: {
-    subtitle: "Skannaa tyhjät SPL / Token-2022 -token-tilit ja palauta niihin lukittu SOL.",
-    safetyTitle: "Turvallisuus & läpinäkyvyys",
-    safetyBullets: [
-      "Ei custodyä: appi ei voi siirtää varoja ilman allekirjoitustasi.",
-      "Älä koskaan syötä seed phrasea — tämä sovellus ei pyydä sitä.",
-      "Sulkee vain tyhjät token-tilit (saldo 0) omistamastasi lompakosta.",
-    ],
-    closesOnly: "Sulkee vain",
-    neverCloses: "Ei sulje",
-    closesOnlyBullets: ["Tyhjät SPL & Token-2022 token-tilit (saldo 0)", "Vain tilit, joiden owner on sinun wallet"],
-    neverClosesBullets: ["WSOL-tilit (So111…)", "Tilit joissa token-saldoa (≠ 0)"],
-    feeLine: (feePct: string) =>
-      `Fee: ${feePct} palautetusta SOL:sta (per batch). Fee veloitetaan vain onnistuneissa claim-transaktioissa.`,
+    tagline: "Skannaa tyhjät token-tilit ja palauta niihin lukittu SOL.",
     connect: "Yhdistä lompakko",
     scan: "Skannaa",
-    claim: (n: number) => `Claim (${n})`,
+    claim: "Claim",
     selectAll: "Valitse kaikki",
     clear: "Poista valinnat",
     hideList: "Piilota lista",
     showList: "Näytä lista",
-    wallet: "Lompakko",
-    walletBalance: "Wallet balance",
     emptyAccounts: "Tyhjiä tilejä",
+    walletBalance: "Wallet balance",
     rentPerAcc: "Rent / tili",
-    estReturn: "Arvioitu palautus",
+    estimatedReturn: "Arvioitu palautus",
     status: "Status",
-    idleStatus: "—",
-    found: (n: number) => `Löytyi ${n} tyhjää token-tiliä.`,
-    noWallet: "Yhdistä lompakko ensin.",
-    scanning: "Skannataan…",
-    scanErr: (msg: string) => `Virhe skannauksessa: ${msg}`,
-    claiming: "Claim käynnissä… Phantom pyytää allekirjoituksia.",
-    claimDone: (sig: string) => `Valmis. Tx: ${sig}`,
-    claimErr: (msg: string) => `Claim epäonnistui: ${msg}`,
-    selected: (n: number, gross: string, fee: string, net: string) =>
-      `Valittu: ${n} (gross ${gross} SOL · fee ${fee} SOL · net ${net} SOL)`,
-    tip: "Vinkki: claim tehdään batcheina ja näyttää edistymisen. Jos tulos on 0, wallet on todennäköisesti jo puhdas.",
-    program: "Ohjelma",
-    mint: "mint",
-    previewNote: "Näytetään vain ensimmäiset 50 riviä listassa (UI-syistä).",
+    selected: "Valittu",
+    gross: "gross",
+    fee: "fee",
+    net: "net",
+    trustTitle: "Safety & transparency",
+    trustBullets: [
+      "Ei custodyä: appi ei voi siirtää varoja ilman allekirjoitustasi.",
+      "Älä koskaan syötä seed phrasea — tämä appi ei kysy sitä.",
+    ],
+    closesOnly: "Sulkee vain",
+    closesOnlyBullets: [
+      "Tyhjät SPL + Token-2022 token-tilit (saldo 0)",
+      "Vain tilit joiden owner on sinun wallet",
+    ],
+    neverCloses: "Ei sulje koskaan",
+    neverClosesBullets: ["WSOL-tilit (So111…)", "Tilit joissa on token-saldoa (≠ 0)"],
+    feeLine: (pct: string) =>
+      `Fee: ${pct} onnistuneesta palautuksesta (per batch). Fee veloitetaan vain onnistuneissa claim-transaktioissa.`,
+    tip:
+      "Vinkki: jos tulos on 0, wallet on todennäköisesti jo “puhdas”. Claim ajetaan batcheina ja Phantom pyytää allekirjoitukset.",
+    share: "Share your result",
+    shareHint: "Avaa X/Twitter ja jaa tulos (auttaa saamaan käyttäjiä).",
+    openRepo: "Avaa repo",
+    lastTx: "Viimeisin tx",
   },
   en: {
-    subtitle: "Scan empty SPL / Token-2022 token accounts and reclaim the SOL locked as rent.",
-    safetyTitle: "Safety & transparency",
-    safetyBullets: [
-      "Non-custodial: the app cannot move funds without your signature.",
-      "Never enter your seed phrase — this app will never ask for it.",
-      "Only closes empty token accounts (balance 0) owned by your wallet.",
-    ],
-    closesOnly: "Closes only",
-    neverCloses: "Never closes",
-    closesOnlyBullets: ["Empty SPL & Token-2022 token accounts (balance 0)", "Only accounts owned by your wallet"],
-    neverClosesBullets: ["WSOL accounts (So111…)", "Accounts with token balance (≠ 0)"],
-    feeLine: (feePct: string) =>
-      `Fee: ${feePct} of successfully reclaimed SOL (per batch). Fee is charged only on successful claim transactions.`,
+    tagline: "Scan empty token accounts and reclaim locked SOL.",
     connect: "Connect wallet",
     scan: "Scan",
-    claim: (n: number) => `Claim (${n})`,
+    claim: "Claim",
     selectAll: "Select all",
     clear: "Clear selection",
     hideList: "Hide list",
     showList: "Show list",
-    wallet: "Wallet",
-    walletBalance: "Wallet balance",
     emptyAccounts: "Empty accounts",
+    walletBalance: "Wallet balance",
     rentPerAcc: "Rent / account",
-    estReturn: "Estimated return",
+    estimatedReturn: "Estimated return",
     status: "Status",
-    idleStatus: "—",
-    found: (n: number) => `Found ${n} empty token accounts.`,
-    noWallet: "Please connect a wallet first.",
-    scanning: "Scanning…",
-    scanErr: (msg: string) => `Scan error: ${msg}`,
-    claiming: "Claim in progress… Phantom will request signatures.",
-    claimDone: (sig: string) => `Done. Tx: ${sig}`,
-    claimErr: (msg: string) => `Claim failed: ${msg}`,
-    selected: (n: number, gross: string, fee: string, net: string) =>
-      `Selected: ${n} (gross ${gross} SOL · fee ${fee} SOL · net ${net} SOL)`,
-    tip: "Tip: claim runs in batches and shows progress. If result is 0, your wallet is likely already clean.",
-    program: "Program",
-    mint: "mint",
-    previewNote: "Showing only first 50 rows in the list (UI).",
+    selected: "Selected",
+    gross: "gross",
+    fee: "fee",
+    net: "net",
+    trustTitle: "Safety & transparency",
+    trustBullets: [
+      "No custody: the app cannot move funds without your signature.",
+      "Never enter your seed phrase — this app will never ask for it.",
+    ],
+    closesOnly: "Closes only",
+    closesOnlyBullets: [
+      "Empty SPL + Token-2022 token accounts (balance 0)",
+      "Only accounts owned by your wallet",
+    ],
+    neverCloses: "Never closes",
+    neverClosesBullets: ["WSOL accounts (So111…)", "Accounts with token balance (≠ 0)"],
+    feeLine: (pct: string) =>
+      `Fee: ${pct} of successfully reclaimed SOL (per batch). Fee is charged only on successful claim transactions.`,
+    tip:
+      "Tip: if result is 0, your wallet is likely already clean. Claim runs in batches and Phantom will request signatures.",
+    share: "Share your result",
+    shareHint: "Opens X/Twitter to share your result (helps you grow users).",
+    openRepo: "Open repo",
+    lastTx: "Last tx",
   },
 };
 
-function shortPk(pk: string, a = 4, b = 4) {
-  if (pk.length <= a + b + 3) return pk;
-  return `${pk.slice(0, a)}…${pk.slice(-b)}`;
+function shortPk(pk: PublicKey | null | undefined, a = 4, b = 4) {
+  if (!pk) return "—";
+  const s = pk.toBase58();
+  return `${s.slice(0, a)}…${s.slice(-b)}`;
 }
 
 function lamportsToSol(lamports: number) {
   return lamports / LAMPORTS_PER_SOL;
 }
 
-function fmtSol(x: number) {
-  // stable, no scientific notation for small values
-  if (!Number.isFinite(x)) return "0.0000";
-  return x.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+function fmtSol(sol: number | null | undefined, digits = 4) {
+  if (sol == null || Number.isNaN(sol)) return "—";
+  return `${sol.toFixed(digits)} SOL`;
 }
 
-function clampErr(e: unknown) {
-  const msg = e instanceof Error ? e.message : String(e);
-  return msg.length > 240 ? msg.slice(0, 240) + "…" : msg;
+function chunk<T>(arr: T[], size: number) {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+function pctFromBps(bps: number) {
+  return `${(bps / 100).toFixed(2)}%`;
 }
 
 export default function App() {
   const { connection } = useConnection();
-  const { publicKey, connected, signTransaction } = useWallet();
+  const { publicKey, connected, sendTransaction } = useWallet();
 
   const [lang, setLang] = useState<Lang>("fi");
   const t = TEXT[lang];
 
-  const [showTrust, setShowTrust] = useState(true);
-  const [showList, setShowList] = useState(true);
-
   const [walletSol, setWalletSol] = useState<number | null>(null);
 
-  const [empties, setEmpties] = useState<EmptyTokenAccount[]>([]);
+  const [empties, setEmpties] = useState<EmptyTokenAcc[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [status, setStatus] = useState<string>("—");
 
-  const [status, setStatus] = useState<string>(t.idleStatus);
-  const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [showList, setShowList] = useState(true);
 
-  const maxList = 50;
+  const [lastSig, setLastSig] = useState<string | null>(null);
 
-  const feePct = useMemo(() => {
-    const pct = Math.max(0, Math.min(10000, Number.isFinite(FEE_BPS) ? FEE_BPS : 0)) / 100;
-    return `${pct.toFixed(2)}%`;
+  const feeRecipient = useMemo(() => {
+    try {
+      const s = (FEE_RECIPIENT_STR || "").trim();
+      if (!s) return null;
+      return new PublicKey(s);
+    } catch {
+      return null;
+    }
   }, []);
 
+  // Derived numbers
   const selectedAccounts = useMemo(() => {
-    const sel = empties.filter((e) => selected[e.pubkey.toBase58()]);
-    return sel;
-  }, [empties, selected]);
+    const ids = Object.entries(selected)
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+    const map = new Map(empties.map((e) => [e.pubkey.toBase58(), e]));
+    return ids.map((id) => map.get(id)).filter(Boolean) as EmptyTokenAcc[];
+  }, [selected, empties]);
 
-  const grossLamportsSelected = useMemo(() => {
-    return selectedAccounts.reduce((sum, a) => sum + a.lamports, 0);
-  }, [selectedAccounts]);
+  const grossLamports = useMemo(
+    () => selectedAccounts.reduce((sum, a) => sum + a.lamports, 0),
+    [selectedAccounts]
+  );
 
-  const feeLamportsSelected = useMemo(() => {
-    if (!FEE_RECIPIENT || !Number.isFinite(FEE_BPS) || FEE_BPS <= 0) return 0;
-    return Math.floor((grossLamportsSelected * FEE_BPS) / 10_000);
-  }, [grossLamportsSelected]);
+  const feeLamports = useMemo(() => {
+    if (!feeRecipient) return 0;
+    const raw = Math.floor((grossLamports * FEE_BPS) / 10_000);
+    return Math.max(0, raw);
+  }, [grossLamports, feeRecipient]);
 
-  const netLamportsSelected = useMemo(() => {
-    return Math.max(0, grossLamportsSelected - feeLamportsSelected);
-  }, [grossLamportsSelected, feeLamportsSelected]);
+  const netLamports = useMemo(
+    () => Math.max(0, grossLamports - feeLamports),
+    [grossLamports, feeLamports]
+  );
 
-  const perAccLamports = useMemo(() => {
+  const rentPerAccSol = useMemo(() => {
     if (empties.length === 0) return null;
-    const avg = Math.round(empties.reduce((s, a) => s + a.lamports, 0) / empties.length);
-    return avg;
+    const avgLamports =
+      empties.reduce((sum, e) => sum + e.lamports, 0) / empties.length;
+    return lamportsToSol(avgLamports);
   }, [empties]);
 
-  // Refresh wallet balance when connected changes
+  const estimatedReturnSol = useMemo(() => {
+    return lamportsToSol(netLamports);
+  }, [netLamports]);
+
+  // Refresh wallet balance (and subscribe to changes)
   useEffect(() => {
     let stop = false;
+    let subId: number | null = null;
 
     async function refreshBalance() {
       if (!publicKey) {
@@ -201,8 +220,8 @@ export default function App() {
         return;
       }
       try {
-        const bal = await connection.getBalance(publicKey, "confirmed");
-        if (!stop) setWalletSol(lamportsToSol(bal));
+        const lamports = await connection.getBalance(publicKey, "confirmed");
+        if (!stop) setWalletSol(lamportsToSol(lamports));
       } catch {
         if (!stop) setWalletSol(null);
       }
@@ -210,14 +229,13 @@ export default function App() {
 
     refreshBalance();
 
-    // onAccountChange returns number (subscription id), not a Promise
-    let subId: number | null = null;
     if (publicKey) {
-      try {
-        subId = connection.onAccountChange(publicKey, () => refreshBalance(), "confirmed");
-      } catch {
-        subId = null;
-      }
+      // IMPORTANT: onAccountChange returns number, NOT Promise → no .then()
+      subId = connection.onAccountChange(
+        publicKey,
+        () => refreshBalance(),
+        "confirmed"
+      );
     }
 
     return () => {
@@ -232,69 +250,9 @@ export default function App() {
     };
   }, [connection, publicKey]);
 
-  async function scan() {
-    if (!publicKey) {
-      setStatus(t.noWallet);
-      return;
-    }
-    setLoading(true);
-    setStatus(t.scanning);
-
-    try {
-      // Token Program (SPL)
-      const spl = await connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID });
-      // Token-2022 Program
-      const t22 = await connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_2022_PROGRAM_ID });
-
-      const all = [
-        ...spl.value.map((v) => ({ ...v, programId: TOKEN_PROGRAM_ID })),
-        ...t22.value.map((v) => ({ ...v, programId: TOKEN_2022_PROGRAM_ID })),
-      ];
-
-      const emptiesFound: EmptyTokenAccount[] = [];
-
-      for (const item of all) {
-        const pubkey = item.pubkey;
-        const lamports = item.account.lamports ?? 0;
-
-        // parsed token
-        const parsed: any = item.account.data?.parsed;
-        const info = parsed?.info;
-        const tokenAmount = info?.tokenAmount;
-        const mintStr = info?.mint;
-
-        if (!mintStr || !tokenAmount) continue;
-
-        const mint = new PublicKey(mintStr);
-
-        // Skip WSOL always
-        if (mint.equals(WSOL_MINT)) continue;
-
-        // Balance must be 0
-        const amountStr: string = tokenAmount.amount ?? "0";
-        if (amountStr !== "0") continue;
-
-        // If account has no lamports for some reason, still allow but estimate 0
-        emptiesFound.push({
-          pubkey,
-          programId: item.programId,
-          mint,
-          lamports: lamports,
-        });
-      }
-
-      setEmpties(emptiesFound);
-      setSelected({});
-      setStatus(t.found(emptiesFound.length));
-    } catch (e) {
-      setStatus(t.scanErr(clampErr(e)));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function toggleOne(pk58: string) {
-    setSelected((prev) => ({ ...prev, [pk58]: !prev[pk58] }));
+  // Helpers
+  function toggleOne(id: string) {
+    setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
   function selectAll() {
@@ -307,270 +265,413 @@ export default function App() {
     setSelected({});
   }
 
-  async function claimSelected() {
+  async function fetchEmptyTokenAccountsForProgram(programId: PublicKey) {
+    if (!publicKey) return [] as EmptyTokenAcc[];
+
+    // Parsed accounts gives tokenAmount nicely
+    const res = await connection.getParsedTokenAccountsByOwner(publicKey, {
+      programId,
+    });
+
+    const out: EmptyTokenAcc[] = [];
+    for (const it of res.value) {
+      const pubkey = it.pubkey;
+      const info: any = it.account.data?.parsed?.info;
+      if (!info) continue;
+
+      const mintStr: string | undefined = info.mint;
+      const tokenAmount = info.tokenAmount;
+      const ownerStr: string | undefined = info.owner;
+
+      if (!mintStr || !tokenAmount || !ownerStr) continue;
+      if (ownerStr !== publicKey.toBase58()) continue;
+
+      // only empty
+      const uiAmount = Number(tokenAmount.uiAmount ?? 0);
+      if (uiAmount !== 0) continue;
+
+      // skip WSOL
+      if (mintStr === WSOL_MINT.toBase58()) continue;
+
+      // lamports in account = what you reclaim by closing it
+      const lamports = it.account.lamports ?? 0;
+      if (lamports <= 0) continue;
+
+      out.push({
+        pubkey,
+        programId,
+        mint: new PublicKey(mintStr),
+        lamports,
+      });
+    }
+
+    return out;
+  }
+
+  async function scan() {
     if (!publicKey) {
-      setStatus(t.noWallet);
+      setStatus(lang === "fi" ? "Yhdistä lompakko ensin." : "Connect wallet first.");
       return;
     }
-    if (!connected || !signTransaction) {
-      setStatus(t.noWallet);
-      return;
-    }
-    if (selectedAccounts.length === 0) return;
 
-    setLoading(true);
-    setStatus(t.claiming);
-
-    // batching: keep tx size safe
-    const BATCH_SIZE = 8;
+    setScanning(true);
+    setLastSig(null);
 
     try {
-      for (let i = 0; i < selectedAccounts.length; i += BATCH_SIZE) {
-        const batch = selectedAccounts.slice(i, i + BATCH_SIZE);
+      setStatus(lang === "fi" ? "Skannataan…" : "Scanning…");
+
+      const [spl, t22] = await Promise.all([
+        fetchEmptyTokenAccountsForProgram(TOKEN_PROGRAM_ID),
+        fetchEmptyTokenAccountsForProgram(TOKEN_2022_PROGRAM_ID),
+      ]);
+
+      const merged = [...spl, ...t22].sort((a, b) => b.lamports - a.lamports);
+
+      setEmpties(merged);
+      setSelected({});
+
+      setStatus(
+        lang === "fi"
+          ? `Löytyi ${merged.length} tyhjää token-tiliä.`
+          : `Found ${merged.length} empty token accounts.`
+      );
+    } catch (e: any) {
+      setEmpties([]);
+      setSelected({});
+      setStatus(
+        (lang === "fi" ? "Virhe skannauksessa: " : "Scan error: ") +
+          String(e?.message ?? e)
+      );
+    } finally {
+      setScanning(false);
+    }
+  }
+
+  async function claimSelected() {
+    if (!publicKey) {
+      setStatus(lang === "fi" ? "Yhdistä lompakko ensin." : "Connect wallet first.");
+      return;
+    }
+    if (selectedAccounts.length === 0) {
+      setStatus(lang === "fi" ? "Ei valintoja." : "Nothing selected.");
+      return;
+    }
+
+    setClaiming(true);
+    setLastSig(null);
+
+    try {
+      const batches = chunk(selectedAccounts, MAX_ACCOUNTS_PER_TX);
+      let claimedTotalLamports = 0;
+
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+
+        const batchGross = batch.reduce((sum, a) => sum + a.lamports, 0);
+        const batchFee =
+          feeRecipient && FEE_BPS > 0
+            ? Math.max(0, Math.floor((batchGross * FEE_BPS) / 10_000))
+            : 0;
 
         const tx = new Transaction();
-        tx.feePayer = publicKey;
 
-        // Close instructions -> send rent to user
-        let grossLamports = 0;
-        for (const acc of batch) {
-          grossLamports += acc.lamports;
+        // Fee transfer first (same tx). If close fails → whole tx fails → no fee charged.
+        if (feeRecipient && batchFee > 0) {
+          tx.add(
+            SystemProgram.transfer({
+              fromPubkey: publicKey,
+              toPubkey: feeRecipient,
+              lamports: batchFee,
+            })
+          );
+        }
+
+        // Close accounts → reclaim lamports to wallet
+        for (const a of batch) {
           tx.add(
             createCloseAccountInstruction(
-              acc.pubkey, // account to close
-              publicKey, // destination (user)
-              publicKey, // owner
+              a.pubkey, // account to close
+              publicKey, // destination (wallet)
+              publicKey, // owner (wallet)
               [], // multisig signers
-              acc.programId // token program id
+              a.programId // token program id (SPL or Token-2022)
             )
           );
         }
 
-        // Fee transfer (only if configured and > 0)
-        if (FEE_RECIPIENT && Number.isFinite(FEE_BPS) && FEE_BPS > 0) {
-          const feeLamports = Math.floor((grossLamports * FEE_BPS) / 10_000);
-          if (feeLamports > 0) {
-            tx.add(
-              SystemProgram.transfer({
-                fromPubkey: publicKey,
-                toPubkey: FEE_RECIPIENT,
-                lamports: feeLamports,
-              })
-            );
-          }
-        }
+        setStatus(
+          (lang === "fi" ? "Claim batch " : "Claim batch ") +
+            `${i + 1}/${batches.length}…`
+        );
 
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
-        tx.recentBlockhash = blockhash;
-
-        // Sign + send
-        const signed = await signTransaction(tx);
-        const sig = await connection.sendRawTransaction(signed.serialize(), {
+        const sig = await sendTransaction(tx, connection, {
           skipPreflight: false,
-          preflightCommitment: "confirmed",
         });
 
-        await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+        setLastSig(sig);
 
-        setStatus(t.claimDone(sig));
+        // wait confirmation
+        const conf = await connection.confirmTransaction(sig, "confirmed");
+        if (conf.value.err) {
+          throw new Error(
+            (lang === "fi" ? "Transaktio epäonnistui: " : "Transaction failed: ") +
+              JSON.stringify(conf.value.err)
+          );
+        }
+
+        claimedTotalLamports += Math.max(0, batchGross - batchFee);
+
+        // remove claimed from local lists
+        setSelected((prev) => {
+          const next = { ...prev };
+          for (const a of batch) delete next[a.pubkey.toBase58()];
+          return next;
+        });
+        setEmpties((prev) => {
+          const set = new Set(batch.map((b) => b.pubkey.toBase58()));
+          return prev.filter((x) => !set.has(x.pubkey.toBase58()));
+        });
       }
 
-      // re-scan to update list
-      await scan();
-    } catch (e) {
-      setStatus(t.claimErr(clampErr(e)));
+      setStatus(
+        lang === "fi"
+          ? `Valmis. Arvioitu palautus ~${fmtSol(lamportsToSol(claimedTotalLamports), 4)}`
+          : `Done. Estimated reclaimed ~${fmtSol(lamportsToSol(claimedTotalLamports), 4)}`
+      );
+    } catch (e: any) {
+      setStatus(
+        (lang === "fi" ? "Claim-virhe: " : "Claim error: ") + String(e?.message ?? e)
+      );
     } finally {
-      setLoading(false);
+      setClaiming(false);
     }
   }
 
-  const selectedLine = useMemo(() => {
-    const n = selectedAccounts.length;
-    const gross = fmtSol(lamportsToSol(grossLamportsSelected));
-    const fee = fmtSol(lamportsToSol(feeLamportsSelected));
-    const net = fmtSol(lamportsToSol(netLamportsSelected));
-    return t.selected(n, gross, fee, net);
-  }, [selectedAccounts.length, grossLamportsSelected, feeLamportsSelected, netLamportsSelected, lang]);
+  function shareResult() {
+    const emptyCount = empties.length;
+    const reclaimed = estimatedReturnSol;
+
+    const url = "https://sol-rent-claimer.vercel.app";
+    const text =
+      emptyCount > 0
+        ? `I just reclaimed ~${reclaimed.toFixed(4)} SOL locked as rent in old Solana token accounts 🔥`
+        : `Checked my Solana wallet — already clean ✅`;
+
+    const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+      text
+    )}&url=${encodeURIComponent(url)}`;
+
+    window.open(intent, "_blank", "noopener,noreferrer");
+  }
+
+  const feeText = useMemo(() => pctFromBps(FEE_BPS), []);
 
   return (
     <div className="page">
-      <div className="bgOrbs" aria-hidden="true" />
+      {/* Fix wallet adapter dropdown being unclickable/transparent in some CSS stacks */}
+      <style>{`
+        .wallet-adapter-modal-wrapper,
+        .wallet-adapter-dropdown-list {
+          z-index: 999999 !important;
+          pointer-events: auto !important;
+        }
+        .wallet-adapter-dropdown {
+          position: relative;
+          z-index: 999998 !important;
+        }
+      `}</style>
 
-      <main className="wrap">
-        <header className="top">
-          <div>
-            <h1 className="title">{APP_NAME}</h1>
-            <div className="sub">{t.subtitle}</div>
+      <header className="topBar">
+        <div className="brand">
+          <div className="title">{APP_NAME}</div>
+          <div className="subtitle">{t.tagline}</div>
+        </div>
+
+        <div className="topRight">
+          <button
+            className="chip"
+            onClick={() => setLang((p) => (p === "fi" ? "en" : "fi"))}
+            title="Language"
+          >
+            {lang.toUpperCase()}
+          </button>
+        </div>
+      </header>
+
+      {/* Trust layer */}
+      <section className="trustCard">
+        <div className="trustHead">{t.trustTitle}</div>
+
+        <ul className="trustList">
+          {t.trustBullets.map((x: string) => (
+            <li key={x}>{x}</li>
+          ))}
+        </ul>
+
+        <div className="trustGrid">
+          <div className="trustBox">
+            <div className="trustBoxTitle">{t.closesOnly}</div>
+            <ul>
+              {t.closesOnlyBullets.map((x: string) => (
+                <li key={x}>{x}</li>
+              ))}
+            </ul>
           </div>
 
-          <div className="topRight">
-            <button
-              className="pill pill3d"
-              onClick={() => setLang((p) => (p === "fi" ? "en" : "fi"))}
-              title="Language"
-            >
-              {lang.toUpperCase()}
-            </button>
+          <div className="trustBox">
+            <div className="trustBoxTitle">{t.neverCloses}</div>
+            <ul>
+              {t.neverClosesBullets.map((x: string) => (
+                <li key={x}>{x}</li>
+              ))}
+            </ul>
           </div>
-        </header>
+        </div>
 
-        {/* Trust layer */}
-        <section className={`card glass floaty ${showTrust ? "" : "collapsed"}`}>
-          <div className="cardHead">
-            <div className="cardTitle">{t.safetyTitle}</div>
-            <button className="ghostBtn" onClick={() => setShowTrust((s) => !s)}>
-              {showTrust ? "—" : "+"}
-            </button>
-          </div>
-
-          {showTrust && (
+        <div className="trustFoot">
+          {t.feeLine(feeText)}{" "}
+          {REPO_URL ? (
             <>
-              <ul className="bullets">
-                {t.safetyBullets.map((x: string, idx: number) => (
-                  <li key={idx}>{x}</li>
-                ))}
-              </ul>
-
-              <div className="split">
-                <div className="miniCard">
-                  <div className="miniTitle">{t.closesOnly}</div>
-                  <ul className="miniList">
-                    {t.closesOnlyBullets.map((x: string, idx: number) => (
-                      <li key={idx}>{x}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="miniCard">
-                  <div className="miniTitle">{t.neverCloses}</div>
-                  <ul className="miniList">
-                    {t.neverClosesBullets.map((x: string, idx: number) => (
-                      <li key={idx}>{x}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <div className="fine">
-                {t.feeLine(feePct)}
-                {!FEE_RECIPIENT && (
-                  <span className="fineDim">
-                    {" "}
-                    (Tip: set VITE_FEE_RECIPIENT to enable fee on Vercel)
-                  </span>
-                )}
-              </div>
+              ·{" "}
+              <a className="link" href={REPO_URL} target="_blank" rel="noreferrer">
+                {t.openRepo}
+              </a>
             </>
-          )}
+          ) : null}
+        </div>
+      </section>
+
+      {/* Share box (only shows if connected) */}
+      {publicKey && (
+        <section className="shareBox">
+          <button className="shareBtn" onClick={shareResult}>
+            {t.share}
+          </button>
+          <div className="shareHint">{t.shareHint}</div>
         </section>
+      )}
 
-        {/* Main card */}
-        <section className="card glass pop">
-          <div className="toolbar">
-            <div className="left">
-              <div className="walletBtnWrap">
-                <WalletMultiButton className="walletBtn walletBtn3d" />
-              </div>
-
-              <button className="btn btn3d" onClick={scan} disabled={!publicKey || loading}>
-                {t.scan}
+      {/* Main card */}
+      <section className="card">
+        <div className="cardTop">
+          <div className="walletLeft">
+            <WalletMultiButton className="walletBtn" />
+            <div className="btnRow">
+              <button className="btn" onClick={scan} disabled={!connected || scanning || claiming}>
+                {scanning ? "…" : t.scan}
               </button>
 
-              <button className="btn btn3d" onClick={claimSelected} disabled={!publicKey || loading || selectedAccounts.length === 0}>
-                {t.claim(selectedAccounts.length)}
+              <button
+                className="btn primary"
+                onClick={claimSelected}
+                disabled={!connected || claiming || scanning || selectedAccounts.length === 0}
+              >
+                {claiming ? "…" : `${t.claim} (${selectedAccounts.length})`}
               </button>
 
-              <button className="btn btn3d btnGhost" onClick={selectAll} disabled={loading || empties.length === 0}>
+              <button className="btn" onClick={selectAll} disabled={!connected || empties.length === 0}>
                 {t.selectAll}
               </button>
 
-              <button className="btn btn3d btnGhost" onClick={clearSelection} disabled={loading}>
+              <button className="btn" onClick={clearSelection} disabled={!connected}>
                 {t.clear}
               </button>
             </div>
-
-            <div className="right">
-              <div className="muted">
-                {t.wallet}: <span className="mono">{publicKey ? shortPk(publicKey.toBase58(), 6, 6) : "—"}</span>
-              </div>
-            </div>
           </div>
 
-          <div className="grid">
-            <div className="stat">
-              <div className="label">{t.walletBalance}</div>
-              <div className="value">{walletSol == null ? "—" : `${fmtSol(walletSol)} SOL`}</div>
+          <div className="walletRight">
+            <div className="mini">
+              {publicKey ? `Wallet: ${shortPk(publicKey, 6, 4)}` : t.connect}
             </div>
+            {RPC_URL ? <div className="mini dim">RPC: {RPC_URL}</div> : null}
+          </div>
+        </div>
 
-            <div className="stat">
-              <div className="label">{t.emptyAccounts}</div>
-              <div className="value">{empties.length}</div>
-            </div>
-
-            <div className="stat">
-              <div className="label">{t.rentPerAcc}</div>
-              <div className="value">
-                {perAccLamports == null ? "—" : `${fmtSol(lamportsToSol(perAccLamports))} SOL`}
-              </div>
-            </div>
-
-            <div className="stat">
-              <div className="label">{t.estReturn}</div>
-              <div className="value">
-                {selectedAccounts.length === 0
-                  ? "—"
-                  : `${fmtSol(lamportsToSol(netLamportsSelected))} SOL`}
-              </div>
-            </div>
+        <div className="statsGrid">
+          <div className="stat">
+            <div className="statLabel">{t.walletBalance}</div>
+            <div className="statValue">{fmtSol(walletSol, 4)}</div>
           </div>
 
-          <div className="statusRow">
-            <div className="status">
-              <span className="statusKey">{t.status}:</span> {status ?? t.idleStatus}
-            </div>
-
-            <button className="pill pill3d" onClick={() => setShowList((s) => !s)} disabled={empties.length === 0}>
-              {showList ? t.hideList : t.showList}
-            </button>
+          <div className="stat">
+            <div className="statLabel">{t.emptyAccounts}</div>
+            <div className="statValue">{empties.length}</div>
           </div>
 
-          <div className="selectedLine">{selectedLine}</div>
+          <div className="stat">
+            <div className="statLabel">{t.rentPerAcc}</div>
+            <div className="statValue">{fmtSol(rentPerAccSol, 6)}</div>
+          </div>
 
-          {showList && (
-            <div className="list">
-              {empties.length > maxList && <div className="listNote">{t.previewNote}</div>}
+          <div className="stat">
+            <div className="statLabel">{t.estimatedReturn}</div>
+            <div className="statValue">{fmtSol(estimatedReturnSol, 4)}</div>
+          </div>
+        </div>
 
-              {empties.slice(0, maxList).map((e) => {
-                const pk = e.pubkey.toBase58();
-                const checked = !!selected[pk];
+        <div className="statusRow">
+          <div className="status">
+            <strong>{t.status}:</strong> {status}
+          </div>
 
+          {lastSig ? (
+            <a
+              className="link"
+              href={`${EXPLORER_BASE}${lastSig}`}
+              target="_blank"
+              rel="noreferrer"
+              title={lastSig}
+            >
+              {t.lastTx}: {shortPk(new PublicKey(lastSig), 6, 4)}
+            </a>
+          ) : null}
+        </div>
+
+        <div className="selectedRow">
+          <div className="selectedText">
+            {t.selected}: {selectedAccounts.length} (
+            {t.gross} {lamportsToSol(grossLamports).toFixed(6)} SOL · {t.fee}{" "}
+            {lamportsToSol(feeLamports).toFixed(6)} SOL · {t.net}{" "}
+            {lamportsToSol(netLamports).toFixed(6)} SOL)
+          </div>
+
+          <button className="btn miniBtn" onClick={() => setShowList((v) => !v)} disabled={!connected}>
+            {showList ? t.hideList : t.showList}
+          </button>
+        </div>
+
+        {showList && (
+          <div className="list">
+            {empties.length === 0 ? (
+              <div className="listEmpty">{t.tip}</div>
+            ) : (
+              empties.map((e) => {
+                const id = e.pubkey.toBase58();
+                const checked = !!selected[id];
+                const is2022 = e.programId.equals(TOKEN_2022_PROGRAM_ID);
                 return (
-                  <label className={`row ${checked ? "rowOn" : ""}`} key={pk}>
+                  <label key={id} className={`row ${checked ? "rowOn" : ""}`}>
                     <input
                       type="checkbox"
                       checked={checked}
-                      onChange={() => toggleOne(pk)}
+                      onChange={() => toggleOne(id)}
                     />
                     <div className="rowMain">
-                      <div className="rowPk mono">{shortPk(pk, 10, 10)}</div>
+                      <div className="rowPk">{shortPk(e.pubkey, 10, 10)}</div>
                       <div className="rowMeta">
-                        {t.program}:{" "}
-                        <span className="mono">
-                          {e.programId.equals(TOKEN_2022_PROGRAM_ID) ? "Token2022" : "SPL"}
-                        </span>{" "}
-                        • {t.mint} <span className="mono">{shortPk(e.mint.toBase58(), 6, 4)}</span>
+                        {is2022 ? "Token2022" : "SPL"} · mint {shortPk(e.mint, 6, 4)}
                       </div>
                     </div>
-                    <div className="rowRight mono">{fmtSol(lamportsToSol(e.lamports))} SOL</div>
+                    <div className="rowRight">{lamportsToSol(e.lamports).toFixed(6)} SOL</div>
                   </label>
                 );
-              })}
-            </div>
-          )}
+              })
+            )}
+          </div>
+        )}
 
-          <div className="footNote">{t.tip}</div>
-        </section>
-      </main>
+        <div className="footNote">{t.tip}</div>
+      </section>
     </div>
   );
 }
