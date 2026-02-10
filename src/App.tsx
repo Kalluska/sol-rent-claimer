@@ -13,7 +13,6 @@ import {
 } from "@solana/spl-token";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-
 import "./ui.css";
 
 type Lang = "fi" | "en";
@@ -28,35 +27,19 @@ type EmptyTokenAcc = {
 const WSOL_MINT = new PublicKey("So11111111111111111111111111111111111111112");
 
 const APP_NAME = String(import.meta.env.VITE_APP_NAME ?? "Solana Rent Claimer");
-const RPC_URL = String(import.meta.env.VITE_RPC_URL ?? "");
-const FEE_BPS = Number(import.meta.env.VITE_FEE_BPS ?? 300); // 300 = 3.00%
+const FEE_BPS = Number(import.meta.env.VITE_FEE_BPS ?? 300); // 300 = 3%
 const FEE_RECIPIENT_STR = String(import.meta.env.VITE_FEE_RECIPIENT ?? "");
-const REPO_URL = String(
-  import.meta.env.VITE_REPO_URL ?? "https://github.com/Kalluska/sol-rent-claimer"
+const PUBLIC_APP_URL = String(
+  import.meta.env.VITE_PUBLIC_URL ?? "https://sol-rent-claimer.vercel.app"
 );
+const REPO_URL = String(import.meta.env.VITE_REPO_URL ?? "");
 
-const MAX_ACCOUNTS_PER_TX = 8; // turvallinen oletus
-const EXPLORER_BASE = "https://solscan.io/tx/";
+const MAX_ACCOUNTS_PER_TX = 8;
 
 const TEXT: Record<Lang, any> = {
   fi: {
-    tagline: "Skannaa tyhjät token-tilit ja palauta niihin lukittu SOL.",
-    connect: "Yhdistä lompakko",
-    scan: "Skannaa",
-    claim: "Claim",
-    selectAll: "Valitse kaikki",
-    clear: "Poista valinnat",
-    hideList: "Piilota lista",
-    showList: "Näytä lista",
-    emptyAccounts: "Tyhjiä tilejä",
-    walletBalance: "Wallet balance",
-    rentPerAcc: "Rent / tili",
-    estimatedReturn: "Arvioitu palautus",
-    status: "Status",
-    selected: "Valittu",
-    gross: "gross",
-    fee: "fee",
-    net: "net",
+    title: APP_NAME,
+    subtitle: "Skannaa tyhjät SPL/Token-2022 -tilit ja palauta niihin lukittu SOL.",
     trustTitle: "Safety & transparency",
     trustBullets: [
       "Ei custodyä: appi ei voi siirtää varoja ilman allekirjoitustasi.",
@@ -71,31 +54,31 @@ const TEXT: Record<Lang, any> = {
     neverClosesBullets: ["WSOL-tilit (So111…)", "Tilit joissa on token-saldoa (≠ 0)"],
     feeLine: (pct: string) =>
       `Fee: ${pct} onnistuneesta palautuksesta (per batch). Fee veloitetaan vain onnistuneissa claim-transaktioissa.`,
+    connectHint: "Yhdistä lompakko",
+    scan: "Skannaa",
+    claim: "Claim",
+    selectAll: "Valitse kaikki",
+    clear: "Poista valinnat",
+    hideList: "Piilota lista",
+    showList: "Näytä lista",
+    walletBalance: "Wallet balance",
+    emptyAccounts: "Tyhjiä tilejä",
+    rentPerAcc: "Rent / tili",
+    estReturn: "Arvioitu palautus",
+    status: "Status",
+    selected: "Valittu",
+    gross: "gross",
+    fee: "fee",
+    net: "net",
     tip:
       "Vinkki: jos tulos on 0, wallet on todennäköisesti jo “puhdas”. Claim ajetaan batcheina ja Phantom pyytää allekirjoitukset.",
     share: "Share your result",
     shareHint: "Avaa X/Twitter ja jaa tulos (auttaa saamaan käyttäjiä).",
-    openRepo: "Avaa repo",
     lastTx: "Viimeisin tx",
   },
   en: {
-    tagline: "Scan empty token accounts and reclaim locked SOL.",
-    connect: "Connect wallet",
-    scan: "Scan",
-    claim: "Claim",
-    selectAll: "Select all",
-    clear: "Clear selection",
-    hideList: "Hide list",
-    showList: "Show list",
-    emptyAccounts: "Empty accounts",
-    walletBalance: "Wallet balance",
-    rentPerAcc: "Rent / account",
-    estimatedReturn: "Estimated return",
-    status: "Status",
-    selected: "Selected",
-    gross: "gross",
-    fee: "fee",
-    net: "net",
+    title: APP_NAME,
+    subtitle: "Scan empty SPL/Token-2022 accounts and reclaim locked SOL.",
     trustTitle: "Safety & transparency",
     trustBullets: [
       "No custody: the app cannot move funds without your signature.",
@@ -110,11 +93,26 @@ const TEXT: Record<Lang, any> = {
     neverClosesBullets: ["WSOL accounts (So111…)", "Accounts with token balance (≠ 0)"],
     feeLine: (pct: string) =>
       `Fee: ${pct} of successfully reclaimed SOL (per batch). Fee is charged only on successful claim transactions.`,
+    connectHint: "Connect wallet",
+    scan: "Scan",
+    claim: "Claim",
+    selectAll: "Select all",
+    clear: "Clear selection",
+    hideList: "Hide list",
+    showList: "Show list",
+    walletBalance: "Wallet balance",
+    emptyAccounts: "Empty accounts",
+    rentPerAcc: "Rent / account",
+    estReturn: "Estimated return",
+    status: "Status",
+    selected: "Selected",
+    gross: "gross",
+    fee: "fee",
+    net: "net",
     tip:
       "Tip: if result is 0, your wallet is likely already clean. Claim runs in batches and Phantom will request signatures.",
     share: "Share your result",
     shareHint: "Opens X/Twitter to share your result (helps you grow users).",
-    openRepo: "Open repo",
     lastTx: "Last tx",
   },
 };
@@ -125,8 +123,8 @@ function shortPk(pk: PublicKey | null | undefined, a = 4, b = 4) {
   return `${s.slice(0, a)}…${s.slice(-b)}`;
 }
 
-function lamportsToSol(lamports: number) {
-  return lamports / LAMPORTS_PER_SOL;
+function lamportsToSol(l: number) {
+  return l / LAMPORTS_PER_SOL;
 }
 
 function fmtSol(sol: number | null | undefined, digits = 4) {
@@ -152,7 +150,6 @@ export default function App() {
   const t = TEXT[lang];
 
   const [walletSol, setWalletSol] = useState<number | null>(null);
-
   const [empties, setEmpties] = useState<EmptyTokenAcc[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<string>("—");
@@ -160,7 +157,6 @@ export default function App() {
   const [scanning, setScanning] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [showList, setShowList] = useState(true);
-
   const [lastSig, setLastSig] = useState<string | null>(null);
 
   const feeRecipient = useMemo(() => {
@@ -173,7 +169,6 @@ export default function App() {
     }
   }, []);
 
-  // Derived numbers
   const selectedAccounts = useMemo(() => {
     const ids = Object.entries(selected)
       .filter(([, v]) => v)
@@ -189,8 +184,7 @@ export default function App() {
 
   const feeLamports = useMemo(() => {
     if (!feeRecipient) return 0;
-    const raw = Math.floor((grossLamports * FEE_BPS) / 10_000);
-    return Math.max(0, raw);
+    return Math.max(0, Math.floor((grossLamports * FEE_BPS) / 10_000));
   }, [grossLamports, feeRecipient]);
 
   const netLamports = useMemo(
@@ -200,16 +194,13 @@ export default function App() {
 
   const rentPerAccSol = useMemo(() => {
     if (empties.length === 0) return null;
-    const avgLamports =
-      empties.reduce((sum, e) => sum + e.lamports, 0) / empties.length;
-    return lamportsToSol(avgLamports);
+    const avg = empties.reduce((s, e) => s + e.lamports, 0) / empties.length;
+    return lamportsToSol(avg);
   }, [empties]);
 
-  const estimatedReturnSol = useMemo(() => {
-    return lamportsToSol(netLamports);
-  }, [netLamports]);
+  const estReturnSol = useMemo(() => lamportsToSol(netLamports), [netLamports]);
 
-  // Refresh wallet balance (and subscribe to changes)
+  // wallet balance + listener (NO .then() bug)
   useEffect(() => {
     let stop = false;
     let subId: number | null = null;
@@ -230,12 +221,7 @@ export default function App() {
     refreshBalance();
 
     if (publicKey) {
-      // IMPORTANT: onAccountChange returns number, NOT Promise → no .then()
-      subId = connection.onAccountChange(
-        publicKey,
-        () => refreshBalance(),
-        "confirmed"
-      );
+      subId = connection.onAccountChange(publicKey, () => refreshBalance(), "confirmed");
     }
 
     return () => {
@@ -243,14 +229,11 @@ export default function App() {
       if (subId != null) {
         try {
           connection.removeAccountChangeListener(subId);
-        } catch {
-          // ignore
-        }
+        } catch {}
       }
     };
   }, [connection, publicKey]);
 
-  // Helpers
   function toggleOne(id: string) {
     setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
   }
@@ -268,37 +251,30 @@ export default function App() {
   async function fetchEmptyTokenAccountsForProgram(programId: PublicKey) {
     if (!publicKey) return [] as EmptyTokenAcc[];
 
-    // Parsed accounts gives tokenAmount nicely
-    const res = await connection.getParsedTokenAccountsByOwner(publicKey, {
-      programId,
-    });
+    const res = await connection.getParsedTokenAccountsByOwner(publicKey, { programId });
 
     const out: EmptyTokenAcc[] = [];
     for (const it of res.value) {
-      const pubkey = it.pubkey;
       const info: any = it.account.data?.parsed?.info;
       if (!info) continue;
 
       const mintStr: string | undefined = info.mint;
-      const tokenAmount = info.tokenAmount;
       const ownerStr: string | undefined = info.owner;
+      const tokenAmount = info.tokenAmount;
 
-      if (!mintStr || !tokenAmount || !ownerStr) continue;
+      if (!mintStr || !ownerStr || !tokenAmount) continue;
       if (ownerStr !== publicKey.toBase58()) continue;
 
-      // only empty
       const uiAmount = Number(tokenAmount.uiAmount ?? 0);
       if (uiAmount !== 0) continue;
 
-      // skip WSOL
       if (mintStr === WSOL_MINT.toBase58()) continue;
 
-      // lamports in account = what you reclaim by closing it
       const lamports = it.account.lamports ?? 0;
       if (lamports <= 0) continue;
 
       out.push({
-        pubkey,
+        pubkey: it.pubkey,
         programId,
         mint: new PublicKey(mintStr),
         lamports,
@@ -326,7 +302,6 @@ export default function App() {
       ]);
 
       const merged = [...spl, ...t22].sort((a, b) => b.lamports - a.lamports);
-
       setEmpties(merged);
       setSelected({});
 
@@ -338,10 +313,7 @@ export default function App() {
     } catch (e: any) {
       setEmpties([]);
       setSelected({});
-      setStatus(
-        (lang === "fi" ? "Virhe skannauksessa: " : "Scan error: ") +
-          String(e?.message ?? e)
-      );
+      setStatus((lang === "fi" ? "Virhe skannauksessa: " : "Scan error: ") + String(e?.message ?? e));
     } finally {
       setScanning(false);
     }
@@ -362,20 +334,15 @@ export default function App() {
 
     try {
       const batches = chunk(selectedAccounts, MAX_ACCOUNTS_PER_TX);
-      let claimedTotalLamports = 0;
 
       for (let i = 0; i < batches.length; i++) {
         const batch = batches[i];
-
         const batchGross = batch.reduce((sum, a) => sum + a.lamports, 0);
         const batchFee =
-          feeRecipient && FEE_BPS > 0
-            ? Math.max(0, Math.floor((batchGross * FEE_BPS) / 10_000))
-            : 0;
+          feeRecipient && FEE_BPS > 0 ? Math.max(0, Math.floor((batchGross * FEE_BPS) / 10_000)) : 0;
 
         const tx = new Transaction();
 
-        // Fee transfer first (same tx). If close fails → whole tx fails → no fee charged.
         if (feeRecipient && batchFee > 0) {
           tx.add(
             SystemProgram.transfer({
@@ -386,31 +353,23 @@ export default function App() {
           );
         }
 
-        // Close accounts → reclaim lamports to wallet
         for (const a of batch) {
           tx.add(
             createCloseAccountInstruction(
-              a.pubkey, // account to close
-              publicKey, // destination (wallet)
-              publicKey, // owner (wallet)
-              [], // multisig signers
-              a.programId // token program id (SPL or Token-2022)
+              a.pubkey,
+              publicKey,
+              publicKey,
+              [],
+              a.programId
             )
           );
         }
 
-        setStatus(
-          (lang === "fi" ? "Claim batch " : "Claim batch ") +
-            `${i + 1}/${batches.length}…`
-        );
+        setStatus(`${lang === "fi" ? "Claim batch" : "Claim batch"} ${i + 1}/${batches.length}…`);
 
-        const sig = await sendTransaction(tx, connection, {
-          skipPreflight: false,
-        });
-
+        const sig = await sendTransaction(tx, connection, { skipPreflight: false });
         setLastSig(sig);
 
-        // wait confirmation
         const conf = await connection.confirmTransaction(sig, "confirmed");
         if (conf.value.err) {
           throw new Error(
@@ -419,29 +378,21 @@ export default function App() {
           );
         }
 
-        claimedTotalLamports += Math.max(0, batchGross - batchFee);
-
-        // remove claimed from local lists
+        // remove locally
         setSelected((prev) => {
           const next = { ...prev };
           for (const a of batch) delete next[a.pubkey.toBase58()];
           return next;
         });
         setEmpties((prev) => {
-          const set = new Set(batch.map((b) => b.pubkey.toBase58()));
-          return prev.filter((x) => !set.has(x.pubkey.toBase58()));
+          const remove = new Set(batch.map((b) => b.pubkey.toBase58()));
+          return prev.filter((x) => !remove.has(x.pubkey.toBase58()));
         });
       }
 
-      setStatus(
-        lang === "fi"
-          ? `Valmis. Arvioitu palautus ~${fmtSol(lamportsToSol(claimedTotalLamports), 4)}`
-          : `Done. Estimated reclaimed ~${fmtSol(lamportsToSol(claimedTotalLamports), 4)}`
-      );
+      setStatus(lang === "fi" ? "Valmis ✅" : "Done ✅");
     } catch (e: any) {
-      setStatus(
-        (lang === "fi" ? "Claim-virhe: " : "Claim error: ") + String(e?.message ?? e)
-      );
+      setStatus((lang === "fi" ? "Claim-virhe: " : "Claim error: ") + String(e?.message ?? e));
     } finally {
       setClaiming(false);
     }
@@ -449,17 +400,14 @@ export default function App() {
 
   function shareResult() {
     const emptyCount = empties.length;
-    const reclaimed = estimatedReturnSol;
-
-    const url = "https://sol-rent-claimer.vercel.app";
     const text =
       emptyCount > 0
-        ? `I just reclaimed ~${reclaimed.toFixed(4)} SOL locked as rent in old Solana token accounts 🔥`
+        ? `I found ${emptyCount} empty Solana token accounts with locked rent. Reclaim yours 🔥`
         : `Checked my Solana wallet — already clean ✅`;
 
-    const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-      text
-    )}&url=${encodeURIComponent(url)}`;
+    const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(
+      PUBLIC_APP_URL
+    )}`;
 
     window.open(intent, "_blank", "noopener,noreferrer");
   }
@@ -468,41 +416,38 @@ export default function App() {
 
   return (
     <div className="page">
-      {/* Fix wallet adapter dropdown being unclickable/transparent in some CSS stacks */}
+      {/* Wallet adapter dropdown fix (menu clickable) */}
       <style>{`
-        .wallet-adapter-modal-wrapper,
-        .wallet-adapter-dropdown-list {
+        .wallet-adapter-dropdown, .wallet-adapter-dropdown-list, .wallet-adapter-modal-wrapper {
           z-index: 999999 !important;
-          pointer-events: auto !important;
         }
-        .wallet-adapter-dropdown {
-          position: relative;
-          z-index: 999998 !important;
+        .wallet-adapter-dropdown-list {
+          pointer-events: auto !important;
         }
       `}</style>
 
-      <header className="topBar">
-        <div className="brand">
-          <div className="title">{APP_NAME}</div>
-          <div className="subtitle">{t.tagline}</div>
+      <div className="bgGlow" />
+
+      <header className="hero">
+        <div className="heroLeft">
+          <h1 className="heroTitle">{t.title}</h1>
+          <p className="heroSubtitle">{t.subtitle}</p>
         </div>
 
-        <div className="topRight">
-          <button
-            className="chip"
-            onClick={() => setLang((p) => (p === "fi" ? "en" : "fi"))}
-            title="Language"
-          >
+        <div className="heroRight">
+          <button className="langBtn" onClick={() => setLang((p) => (p === "fi" ? "en" : "fi"))}>
             {lang.toUpperCase()}
           </button>
         </div>
       </header>
 
-      {/* Trust layer */}
       <section className="trustCard">
-        <div className="trustHead">{t.trustTitle}</div>
+        <div className="trustHeader">
+          <div className="trustTitle">{t.trustTitle}</div>
+          <div className="trustMeta">{t.feeLine(feeText)}</div>
+        </div>
 
-        <ul className="trustList">
+        <ul className="trustBullets">
           {t.trustBullets.map((x: string) => (
             <li key={x}>{x}</li>
           ))}
@@ -528,62 +473,55 @@ export default function App() {
           </div>
         </div>
 
-        <div className="trustFoot">
-          {t.feeLine(feeText)}{" "}
+        <div className="trustLinks">
           {REPO_URL ? (
-            <>
-              ·{" "}
-              <a className="link" href={REPO_URL} target="_blank" rel="noreferrer">
-                {t.openRepo}
-              </a>
-            </>
-          ) : null}
+            <a className="link" href={REPO_URL} target="_blank" rel="noreferrer">
+              Repo
+            </a>
+          ) : (
+            <span className="dim">Repo (optional)</span>
+          )}
         </div>
       </section>
 
-      {/* Share box (only shows if connected) */}
       {publicKey && (
-        <section className="shareBox">
-          <button className="shareBtn" onClick={shareResult}>
+        <section className="shareCard">
+          <div className="shareLeft">
+            <div className="shareTitle">{t.share}</div>
+            <div className="shareHint">{t.shareHint}</div>
+          </div>
+          <button className="btn btnPrimary btn3d" onClick={shareResult}>
             {t.share}
           </button>
-          <div className="shareHint">{t.shareHint}</div>
         </section>
       )}
 
-      {/* Main card */}
-      <section className="card">
-        <div className="cardTop">
-          <div className="walletLeft">
+      <section className="mainCard">
+        <div className="mainTop">
+          <div className="walletWrap">
             <WalletMultiButton className="walletBtn" />
-            <div className="btnRow">
-              <button className="btn" onClick={scan} disabled={!connected || scanning || claiming}>
-                {scanning ? "…" : t.scan}
-              </button>
-
-              <button
-                className="btn primary"
-                onClick={claimSelected}
-                disabled={!connected || claiming || scanning || selectedAccounts.length === 0}
-              >
-                {claiming ? "…" : `${t.claim} (${selectedAccounts.length})`}
-              </button>
-
-              <button className="btn" onClick={selectAll} disabled={!connected || empties.length === 0}>
-                {t.selectAll}
-              </button>
-
-              <button className="btn" onClick={clearSelection} disabled={!connected}>
-                {t.clear}
-              </button>
+            <div className="walletMeta">
+              <div className="dim">{publicKey ? `Wallet: ${shortPk(publicKey, 6, 4)}` : t.connectHint}</div>
             </div>
           </div>
 
-          <div className="walletRight">
-            <div className="mini">
-              {publicKey ? `Wallet: ${shortPk(publicKey, 6, 4)}` : t.connect}
-            </div>
-            {RPC_URL ? <div className="mini dim">RPC: {RPC_URL}</div> : null}
+          <div className="actions">
+            <button className="btn btn3d" onClick={scan} disabled={!connected || scanning || claiming}>
+              {scanning ? "…" : t.scan}
+            </button>
+            <button
+              className="btn btnPrimary btn3d"
+              onClick={claimSelected}
+              disabled={!connected || claiming || scanning || selectedAccounts.length === 0}
+            >
+              {claiming ? "…" : `${t.claim} (${selectedAccounts.length})`}
+            </button>
+            <button className="btn btn3d" onClick={selectAll} disabled={!connected || empties.length === 0}>
+              {t.selectAll}
+            </button>
+            <button className="btn btn3d" onClick={clearSelection} disabled={!connected}>
+              {t.clear}
+            </button>
           </div>
         </div>
 
@@ -604,44 +542,37 @@ export default function App() {
           </div>
 
           <div className="stat">
-            <div className="statLabel">{t.estimatedReturn}</div>
-            <div className="statValue">{fmtSol(estimatedReturnSol, 4)}</div>
+            <div className="statLabel">{t.estReturn}</div>
+            <div className="statValue">{fmtSol(estReturnSol, 4)}</div>
           </div>
         </div>
 
         <div className="statusRow">
-          <div className="status">
+          <div className="statusText">
             <strong>{t.status}:</strong> {status}
           </div>
 
           {lastSig ? (
-            <a
-              className="link"
-              href={`${EXPLORER_BASE}${lastSig}`}
-              target="_blank"
-              rel="noreferrer"
-              title={lastSig}
-            >
-              {t.lastTx}: {shortPk(new PublicKey(lastSig), 6, 4)}
+            <a className="link" href={`https://solscan.io/tx/${lastSig}`} target="_blank" rel="noreferrer">
+              {t.lastTx}: {lastSig.slice(0, 6)}…{lastSig.slice(-4)}
             </a>
           ) : null}
         </div>
 
         <div className="selectedRow">
-          <div className="selectedText">
+          <div className="dim">
             {t.selected}: {selectedAccounts.length} (
             {t.gross} {lamportsToSol(grossLamports).toFixed(6)} SOL · {t.fee}{" "}
-            {lamportsToSol(feeLamports).toFixed(6)} SOL · {t.net}{" "}
-            {lamportsToSol(netLamports).toFixed(6)} SOL)
+            {lamportsToSol(feeLamports).toFixed(6)} SOL · {t.net} {lamportsToSol(netLamports).toFixed(6)} SOL)
           </div>
 
-          <button className="btn miniBtn" onClick={() => setShowList((v) => !v)} disabled={!connected}>
+          <button className="btn btnSmall btn3d" onClick={() => setShowList((v) => !v)} disabled={!connected}>
             {showList ? t.hideList : t.showList}
           </button>
         </div>
 
         {showList && (
-          <div className="list">
+          <div className="listWrap">
             {empties.length === 0 ? (
               <div className="listEmpty">{t.tip}</div>
             ) : (
@@ -651,11 +582,7 @@ export default function App() {
                 const is2022 = e.programId.equals(TOKEN_2022_PROGRAM_ID);
                 return (
                   <label key={id} className={`row ${checked ? "rowOn" : ""}`}>
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleOne(id)}
-                    />
+                    <input type="checkbox" checked={checked} onChange={() => toggleOne(id)} />
                     <div className="rowMain">
                       <div className="rowPk">{shortPk(e.pubkey, 10, 10)}</div>
                       <div className="rowMeta">
