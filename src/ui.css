@@ -160,3 +160,32 @@
 @media (max-width: 820px){
   .trustGrid { grid-template-columns: 1fr !important; }
 }
+@media (max-width: 900px){
+  .cardInner > div[style*="grid-template-columns: 1fr 1fr"]{
+    grid-template-columns: 1fr !important;
+  }
+}
+.trustFooter{
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.trustMeta{
+  font-size: 12px;
+  color: rgba(255,255,255,.55);
+}
+.trustLinks{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.feeAddr{
+  font-size: 12px;
+  color: rgba(255,255,255,.55);
+}
+.mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: rgba(255,255,255,.85);
+}
