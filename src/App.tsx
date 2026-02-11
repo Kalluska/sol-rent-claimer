@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   LAMPORTS_PER_SOL,
   PublicKey,
@@ -26,14 +26,12 @@ type EmptyTokenAcc = {
 
 const WSOL_MINT = new PublicKey("So11111111111111111111111111111111111111112");
 
-// Brand (can be overridden via Vercel env VITE_APP_NAME if you want)
+// Brand
 const APP_NAME = String(import.meta.env.VITE_APP_NAME ?? "Solint");
 
 const FEE_BPS = Number(import.meta.env.VITE_FEE_BPS ?? 300); // 300 = 3%
 const FEE_RECIPIENT_STR = String(import.meta.env.VITE_FEE_RECIPIENT ?? "");
-const PUBLIC_APP_URL = String(
-  import.meta.env.VITE_PUBLIC_URL ?? "https://solint.vercel.app"
-);
+const PUBLIC_APP_URL = String(import.meta.env.VITE_PUBLIC_URL ?? "https://solint.vercel.app");
 const REPO_URL = String(import.meta.env.VITE_REPO_URL ?? "");
 
 const MAX_ACCOUNTS_PER_TX = 8;
@@ -41,6 +39,9 @@ const MAX_ACCOUNTS_PER_TX = 8;
 const TEXT: Record<Lang, any> = {
   fi: {
     title: APP_NAME,
+    welcomeTitle: `Tervetuloa ${APP_NAME}:iin`,
+    welcomeSub: "Yhdistä lompakko ja reclaimaa tyhjien token-tilien lukitsema SOL.",
+    connectCta: "Yhdistä lompakko",
     subtitle: "Skannaa tyhjät SPL/Token-2022 -tilit ja palauta niihin lukittu SOL.",
     trustTitle: "Safety & transparency",
     trustBullets: [
@@ -80,6 +81,9 @@ const TEXT: Record<Lang, any> = {
   },
   en: {
     title: APP_NAME,
+    welcomeTitle: `Welcome to ${APP_NAME}`,
+    welcomeSub: "Connect your wallet to scan and reclaim SOL locked in empty token accounts.",
+    connectCta: "Connect wallet",
     subtitle: "Scan empty SPL/Token-2022 accounts and reclaim locked SOL.",
     trustTitle: "Safety & transparency",
     trustBullets: [
@@ -161,6 +165,13 @@ export default function App() {
   const [showList, setShowList] = useState(true);
   const [lastSig, setLastSig] = useState<string | null>(null);
 
+  // View transitions
+  const [view, setView] = useState<"welcome" | "app">("welcome");
+  const [anim, setAnim] = useState<"none" | "toApp" | "toWelcome">("none");
+
+  // Used to open the wallet adapter modal from our custom button
+  const hiddenWalletBtnRef = useRef<HTMLDivElement | null>(null);
+
   const feeRecipient = useMemo(() => {
     try {
       const s = (FEE_RECIPIENT_STR || "").trim();
@@ -201,6 +212,28 @@ export default function App() {
   }, [empties]);
 
   const estReturnSol = useMemo(() => lamportsToSol(netLamports), [netLamports]);
+
+  // Keep view in sync with wallet connection, with smooth transitions
+  useEffect(() => {
+    if (connected && publicKey) {
+      if (view === "welcome") {
+        setAnim("toApp");
+        window.setTimeout(() => {
+          setView("app");
+          setAnim("none");
+        }, 280);
+      }
+    } else {
+      if (view === "app") {
+        setAnim("toWelcome");
+        window.setTimeout(() => {
+          setView("welcome");
+          setAnim("none");
+        }, 280);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected, publicKey]);
 
   // wallet balance + listener
   useEffect(() => {
@@ -380,7 +413,6 @@ export default function App() {
           );
         }
 
-        // remove locally
         setSelected((prev) => {
           const next = { ...prev };
           for (const a of batch) delete next[a.pubkey.toBase58()];
@@ -416,6 +448,15 @@ export default function App() {
 
   const feeText = useMemo(() => pctFromBps(FEE_BPS), []);
 
+  function openWalletModal() {
+    // Click the hidden WalletMultiButton internally to open the modal
+    const btn = hiddenWalletBtnRef.current?.querySelector("button") as HTMLButtonElement | null;
+    btn?.click();
+  }
+
+  const showWelcome = view === "welcome";
+  const showApp = view === "app";
+
   return (
     <div className="page">
       {/* Wallet adapter dropdown fix (menu clickable) */}
@@ -430,178 +471,206 @@ export default function App() {
 
       <div className="bgGlow" />
 
-      <header className="hero">
-        <div className="heroLeft">
-          {/* ✅ Logo only (place your file at /public/logo.png) */}
-          <img src="/logo.png" alt="Solint" className="appLogo" />
-          <p className="heroSubtitle">{t.subtitle}</p>
-        </div>
+      {/* Hidden wallet button used to open modal from custom CTA */}
+      <div ref={hiddenWalletBtnRef} style={{ position: "absolute", left: -99999, top: -99999 }}>
+        <WalletMultiButton className="walletBtn" />
+      </div>
 
-        <div className="heroRight">
-          <button className="langBtn" onClick={() => setLang((p) => (p === "fi" ? "en" : "fi"))}>
-            {lang.toUpperCase()}
-          </button>
-        </div>
-      </header>
+      {/* WELCOME SCREEN */}
+      {showWelcome && (
+        <div className={`welcomeWrap ${anim === "toApp" ? "fadeOut" : "fadeIn"}`}>
+          <div className="welcomeInner">
+            <img src="/logo.png" alt="Solint" className="appLogo" />
+            <div className="welcomeTitle">{t.welcomeTitle}</div>
+            <div className="welcomeSub">{t.welcomeSub}</div>
 
-      <section className="trustCard">
-        <div className="trustHeader">
-          <div className="trustTitle">{t.trustTitle}</div>
-          <div className="trustMeta">{t.feeLine(feeText)}</div>
-        </div>
+            <button className="btn btnPrimary btn3d welcomeCta" onClick={openWalletModal}>
+              {t.connectCta}
+            </button>
 
-        <ul className="trustBullets">
-          {t.trustBullets.map((x: string) => (
-            <li key={x}>{x}</li>
-          ))}
-        </ul>
-
-        <div className="trustGrid">
-          <div className="trustBox">
-            <div className="trustBoxTitle">{t.closesOnly}</div>
-            <ul>
-              {t.closesOnlyBullets.map((x: string) => (
-                <li key={x}>{x}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="trustBox">
-            <div className="trustBoxTitle">{t.neverCloses}</div>
-            <ul>
-              {t.neverClosesBullets.map((x: string) => (
-                <li key={x}>{x}</li>
-              ))}
-            </ul>
+            <button className="langBtn welcomeLang" onClick={() => setLang((p) => (p === "fi" ? "en" : "fi"))}>
+              {lang.toUpperCase()}
+            </button>
           </div>
         </div>
-
-        <div className="trustLinks">
-          {REPO_URL ? (
-            <a className="link" href={REPO_URL} target="_blank" rel="noreferrer">
-              Repo
-            </a>
-          ) : (
-            <span className="dim">Repo (optional)</span>
-          )}
-        </div>
-      </section>
-
-      {publicKey && (
-        <section className="shareCard">
-          <div className="shareLeft">
-            <div className="shareTitle">{t.share}</div>
-            <div className="shareHint">{t.shareHint}</div>
-          </div>
-          <button className="btn btnPrimary btn3d" onClick={shareResult}>
-            {t.share}
-          </button>
-        </section>
       )}
 
-      <section className="mainCard">
-        <div className="mainTop">
-          <div className="walletWrap">
-            <WalletMultiButton className="walletBtn" />
-            <div className="walletMeta">
-              <div className="dim">{publicKey ? `Wallet: ${shortPk(publicKey, 6, 4)}` : t.connectHint}</div>
+      {/* MAIN APP */}
+      {showApp && (
+        <div className={`${anim === "toWelcome" ? "fadeOut" : "fadeIn"}`}>
+          <header className="hero">
+            <div className="heroLeft">
+              <img src="/logo.png" alt="Solint" className="appLogo" />
+              <p className="heroSubtitle">{t.subtitle}</p>
             </div>
-          </div>
 
-          <div className="actions">
-            <button className="btn btn3d" onClick={scan} disabled={!connected || scanning || claiming}>
-              {scanning ? "…" : t.scan}
-            </button>
-            <button
-              className="btn btnPrimary btn3d"
-              onClick={claimSelected}
-              disabled={!connected || claiming || scanning || selectedAccounts.length === 0}
-            >
-              {claiming ? "…" : `${t.claim} (${selectedAccounts.length})`}
-            </button>
-            <button className="btn btn3d" onClick={selectAll} disabled={!connected || empties.length === 0}>
-              {t.selectAll}
-            </button>
-            <button className="btn btn3d" onClick={clearSelection} disabled={!connected}>
-              {t.clear}
-            </button>
-          </div>
-        </div>
+            <div className="heroRight">
+              <button className="langBtn" onClick={() => setLang((p) => (p === "fi" ? "en" : "fi"))}>
+                {lang.toUpperCase()}
+              </button>
+            </div>
+          </header>
 
-        <div className="statsGrid">
-          <div className="stat">
-            <div className="statLabel">{t.walletBalance}</div>
-            <div className="statValue">{fmtSol(walletSol, 4)}</div>
-          </div>
+          <section className="trustCard">
+            <div className="trustHeader">
+              <div className="trustTitle">{t.trustTitle}</div>
+              <div className="trustMeta">{t.feeLine(feeText)}</div>
+            </div>
 
-          <div className="stat">
-            <div className="statLabel">{t.emptyAccounts}</div>
-            <div className="statValue">{empties.length}</div>
-          </div>
+            <ul className="trustBullets">
+              {t.trustBullets.map((x: string) => (
+                <li key={x}>{x}</li>
+              ))}
+            </ul>
 
-          <div className="stat">
-            <div className="statLabel">{t.rentPerAcc}</div>
-            <div className="statValue">{fmtSol(rentPerAccSol, 6)}</div>
-          </div>
+            <div className="trustGrid">
+              <div className="trustBox">
+                <div className="trustBoxTitle">{t.closesOnly}</div>
+                <ul>
+                  {t.closesOnlyBullets.map((x: string) => (
+                    <li key={x}>{x}</li>
+                  ))}
+                </ul>
+              </div>
 
-          <div className="stat">
-            <div className="statLabel">{t.estReturn}</div>
-            <div className="statValue">{fmtSol(estReturnSol, 4)}</div>
-          </div>
-        </div>
+              <div className="trustBox">
+                <div className="trustBoxTitle">{t.neverCloses}</div>
+                <ul>
+                  {t.neverClosesBullets.map((x: string) => (
+                    <li key={x}>{x}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
 
-        <div className="statusRow">
-          <div className="statusText">
-            <strong>{t.status}:</strong> {status}
-          </div>
+            <div className="trustLinks">
+              {REPO_URL ? (
+                <a className="link" href={REPO_URL} target="_blank" rel="noreferrer">
+                  Repo
+                </a>
+              ) : (
+                <span className="dim">Repo (optional)</span>
+              )}
+            </div>
+          </section>
 
-          {lastSig ? (
-            <a className="link" href={`https://solscan.io/tx/${lastSig}`} target="_blank" rel="noreferrer">
-              {t.lastTx}: {lastSig.slice(0, 6)}…{lastSig.slice(-4)}
-            </a>
-          ) : null}
-        </div>
+          {publicKey && (
+            <section className="shareCard">
+              <div className="shareLeft">
+                <div className="shareTitle">{t.share}</div>
+                <div className="shareHint">{t.shareHint}</div>
+              </div>
+              <button className="btn btnPrimary btn3d" onClick={shareResult}>
+                {t.share}
+              </button>
+            </section>
+          )}
 
-        <div className="selectedRow">
-          <div className="dim">
-            {t.selected}: {selectedAccounts.length} (
-            {t.gross} {lamportsToSol(grossLamports).toFixed(6)} SOL · {t.fee}{" "}
-            {lamportsToSol(feeLamports).toFixed(6)} SOL · {t.net} {lamportsToSol(netLamports).toFixed(6)} SOL)
-          </div>
+          <section className="mainCard">
+            <div className="mainTop">
+              <div className="walletWrap">
+                <WalletMultiButton className="walletBtn" />
+                <div className="walletMeta">
+                  <div className="dim">{publicKey ? `Wallet: ${shortPk(publicKey, 6, 4)}` : t.connectHint}</div>
+                </div>
+              </div>
 
-          <button className="btn btnSmall btn3d" onClick={() => setShowList((v) => !v)} disabled={!connected}>
-            {showList ? t.hideList : t.showList}
-          </button>
-        </div>
+              <div className="actions">
+                <button className="btn btn3d" onClick={scan} disabled={!connected || scanning || claiming}>
+                  {scanning ? "…" : t.scan}
+                </button>
+                <button
+                  className="btn btnPrimary btn3d"
+                  onClick={claimSelected}
+                  disabled={!connected || claiming || scanning || selectedAccounts.length === 0}
+                >
+                  {claiming ? "…" : `${t.claim} (${selectedAccounts.length})`}
+                </button>
+                <button className="btn btn3d" onClick={selectAll} disabled={!connected || empties.length === 0}>
+                  {t.selectAll}
+                </button>
+                <button className="btn btn3d" onClick={clearSelection} disabled={!connected}>
+                  {t.clear}
+                </button>
+              </div>
+            </div>
 
-        {showList && (
-          <div className="listWrap">
-            {empties.length === 0 ? (
-              <div className="listEmpty">{t.tip}</div>
-            ) : (
-              empties.map((e) => {
-                const id = e.pubkey.toBase58();
-                const checked = !!selected[id];
-                const is2022 = e.programId.equals(TOKEN_2022_PROGRAM_ID);
-                return (
-                  <label key={id} className={`row ${checked ? "rowOn" : ""}`}>
-                    <input type="checkbox" checked={checked} onChange={() => toggleOne(id)} />
-                    <div className="rowMain">
-                      <div className="rowPk">{shortPk(e.pubkey, 10, 10)}</div>
-                      <div className="rowMeta">
-                        {is2022 ? "Token2022" : "SPL"} · mint {shortPk(e.mint, 6, 4)}
-                      </div>
-                    </div>
-                    <div className="rowRight">{lamportsToSol(e.lamports).toFixed(6)} SOL</div>
-                  </label>
-                );
-              })
+            <div className="statsGrid">
+              <div className="stat">
+                <div className="statLabel">{t.walletBalance}</div>
+                <div className="statValue">{fmtSol(walletSol, 4)}</div>
+              </div>
+
+              <div className="stat">
+                <div className="statLabel">{t.emptyAccounts}</div>
+                <div className="statValue">{empties.length}</div>
+              </div>
+
+              <div className="stat">
+                <div className="statLabel">{t.rentPerAcc}</div>
+                <div className="statValue">{fmtSol(rentPerAccSol, 6)}</div>
+              </div>
+
+              <div className="stat">
+                <div className="statLabel">{t.estReturn}</div>
+                <div className="statValue">{fmtSol(estReturnSol, 4)}</div>
+              </div>
+            </div>
+
+            <div className="statusRow">
+              <div className="statusText">
+                <strong>{t.status}:</strong> {status}
+              </div>
+
+              {lastSig ? (
+                <a className="link" href={`https://solscan.io/tx/${lastSig}`} target="_blank" rel="noreferrer">
+                  {t.lastTx}: {lastSig.slice(0, 6)}…{lastSig.slice(-4)}
+                </a>
+              ) : null}
+            </div>
+
+            <div className="selectedRow">
+              <div className="dim">
+                {t.selected}: {selectedAccounts.length} (
+                {t.gross} {lamportsToSol(grossLamports).toFixed(6)} SOL · {t.fee}{" "}
+                {lamportsToSol(feeLamports).toFixed(6)} SOL · {t.net} {lamportsToSol(netLamports).toFixed(6)} SOL)
+              </div>
+
+              <button className="btn btnSmall btn3d" onClick={() => setShowList((v) => !v)} disabled={!connected}>
+                {showList ? t.hideList : t.showList}
+              </button>
+            </div>
+
+            {showList && (
+              <div className="listWrap">
+                {empties.length === 0 ? (
+                  <div className="listEmpty">{t.tip}</div>
+                ) : (
+                  empties.map((e) => {
+                    const id = e.pubkey.toBase58();
+                    const checked = !!selected[id];
+                    const is2022 = e.programId.equals(TOKEN_2022_PROGRAM_ID);
+                    return (
+                      <label key={id} className={`row ${checked ? "rowOn" : ""}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleOne(id)} />
+                        <div className="rowMain">
+                          <div className="rowPk">{shortPk(e.pubkey, 10, 10)}</div>
+                          <div className="rowMeta">
+                            {is2022 ? "Token2022" : "SPL"} · mint {shortPk(e.mint, 6, 4)}
+                          </div>
+                        </div>
+                        <div className="rowRight">{lamportsToSol(e.lamports).toFixed(6)} SOL</div>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
             )}
-          </div>
-        )}
 
-        <div className="footNote">{t.tip}</div>
-      </section>
+            <div className="footNote">{t.tip}</div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

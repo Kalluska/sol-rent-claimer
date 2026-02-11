@@ -32,13 +32,45 @@ body{
   overflow-x:hidden;
 }
 
-/* ===== LOGO ===== */
+/* ===== transitions (welcome <-> app) ===== */
+.fadeIn{
+  animation: fadeIn .28s ease forwards;
+}
+.fadeOut{
+  animation: fadeOut .28s ease forwards;
+}
+@keyframes fadeIn{
+  from{ opacity:0; transform: translateY(6px); }
+  to{ opacity:1; transform: translateY(0); }
+}
+@keyframes fadeOut{
+  from{ opacity:1; transform: translateY(0); }
+  to{ opacity:0; transform: translateY(-6px); }
+}
 
+/* ===== page ===== */
+.page{
+  position:relative;
+  min-height:100vh;
+  padding: 48px 20px 72px;
+  max-width: 1060px;
+  margin: 0 auto;
+}
+
+.bgGlow{
+  position:absolute;
+  inset:-200px;
+  filter: blur(70px);
+  opacity:.65;
+  pointer-events:none;
+}
+
+/* ===== logo ===== */
 .appLogo{
-  width:170px;              /* ✅ bigger */
+  width:170px;
   height:auto;
   display:block;
-  margin: 6px auto 0;       /* ✅ centered inside heroLeft */
+  margin: 6px auto 0;
   animation: glowPulse 3.6s ease-in-out infinite;
   filter: drop-shadow(0 0 18px rgba(124,77,255,.35));
 }
@@ -61,24 +93,59 @@ body{
   }
 }
 
-/* page */
-.page{
-  position:relative;
-  min-height:100vh;
-  padding: 48px 20px 72px;
-  max-width: 1060px;
-  margin: 0 auto;
+/* ===== welcome screen ===== */
+.welcomeWrap{
+  position: fixed;
+  inset: 0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 24px;
+  z-index: 50;
 }
 
-.bgGlow{
+.welcomeInner{
+  width: 100%;
+  max-width: 560px;
+  text-align:center;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
+  border:1px solid rgba(255,255,255,.10);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  padding: 28px 22px 22px;
+  position: relative;
+}
+
+.welcomeTitle{
+  margin-top: 14px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-shadow: 0 10px 40px rgba(0,0,0,.35);
+}
+
+.welcomeSub{
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.welcomeCta{
+  margin-top: 16px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 16px;
+}
+
+.welcomeLang{
   position:absolute;
-  inset:-200px;
-  filter: blur(70px);
-  opacity:.65;
-  pointer-events:none;
+  top: 14px;
+  right: 14px;
 }
 
-/* hero */
+/* ===== hero ===== */
 .hero{
   display:flex;
   align-items:flex-start;
@@ -87,14 +154,14 @@ body{
   margin-bottom:18px;
 }
 
-/* ✅ center the left block contents a bit more */
+/* centered block */
 .heroLeft{
   display:flex;
   flex-direction:column;
-  align-items:center;   /* centers logo + subtitle */
-  text-align:center;    /* centers subtitle lines */
+  align-items:center;
+  text-align:center;
   padding-top: 6px;
-  flex: 1;              /* helps it feel centered overall */
+  flex: 1;
 }
 
 .heroTitle{
@@ -106,10 +173,10 @@ body{
 }
 
 .heroSubtitle{
-  margin:14px 0 0;      /* a bit more spacing from logo */
+  margin:14px 0 0;
   color:var(--muted);
   font-size:15px;
-  max-width: 720px;     /* prevents too wide text */
+  max-width: 720px;
 }
 
 .langBtn{
@@ -125,7 +192,7 @@ body{
 .langBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); }
 .langBtn:active{ transform: translateY(0px); }
 
-/* cards */
+/* ===== cards ===== */
 .trustCard, .mainCard, .shareCard{
   background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.05));
   border:1px solid var(--stroke);
@@ -207,7 +274,7 @@ body{
   padding:16px;
 }
 
-/* top row */
+/* ===== top row ===== */
 .mainTop{
   display:flex;
   justify-content:space-between;
@@ -230,7 +297,7 @@ body{
   gap:10px;
 }
 
-/* buttons */
+/* ===== buttons ===== */
 .btn{
   border:1px solid rgba(255,255,255,.12);
   background: rgba(255,255,255,.06);
@@ -267,6 +334,7 @@ body{
     inset 0 -10px 22px rgba(0,0,0,.22);
 }
 
+/* wallet adapter button */
 .walletBtn{
   background: linear-gradient(180deg, rgba(124,77,255,.95), rgba(124,77,255,.55)) !important;
   border: 1px solid rgba(124,77,255,.75) !important;
@@ -277,7 +345,7 @@ body{
     inset 0 -10px 22px rgba(0,0,0,.18) !important;
 }
 
-/* stats */
+/* ===== stats ===== */
 .statsGrid{
   display:grid;
   grid-template-columns: 1fr 1fr;
@@ -300,7 +368,7 @@ body{
   letter-spacing:-.01em;
 }
 
-/* status + selected */
+/* ===== status + selected ===== */
 .statusRow{
   display:flex;
   justify-content:space-between;
@@ -321,7 +389,7 @@ body{
 }
 .dim{ color: var(--muted2); }
 
-/* list */
+/* ===== list ===== */
 .listWrap{
   margin-top: 10px;
   border:1px solid rgba(255,255,255,.08);
@@ -364,21 +432,24 @@ body{
   background: rgba(124,77,255,.10);
 }
 
+/* footer tip */
 .footNote{
   margin-top: 12px;
   color: var(--muted2);
   font-size:12px;
 }
 
+/* responsive */
 @media (max-width: 860px){
   .appLogo{ width:150px; }
-  .heroTitle{ font-size:34px; }
   .trustGrid{ grid-template-columns: 1fr; }
   .statsGrid{ grid-template-columns: 1fr; }
   .mainTop{ flex-direction:column; align-items:stretch; }
   .actions{ justify-content:flex-start; }
+  .welcomeInner{ max-width: 520px; }
 }
 
+/* wallet dropdown "clickable" (some stacks break pointer events) */
 .wallet-adapter-dropdown-list{
   pointer-events: auto !important;
 }
