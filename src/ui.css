@@ -20,25 +20,40 @@
 
 *{box-sizing:border-box}
 html,body{height:100%}
+
+html{
+  background: var(--bg1);
+  overflow-x:hidden;
+}
+
+/* ✅ Make background truly fixed to viewport to remove seams */
 body{
   margin:0;
   font-family: var(--font-brand);
   color:var(--text);
+  background: transparent; /* background moved to ::before */
+  overflow-x:hidden;
+  overscroll-behavior: none;
+}
+
+body::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  pointer-events:none;
   background:
     radial-gradient(1200px 700px at 20% 20%, rgba(124,77,255,.35), transparent 55%),
     radial-gradient(900px 700px at 85% 30%, rgba(57,192,255,.25), transparent 55%),
     radial-gradient(900px 700px at 60% 90%, rgba(255,87,34,.18), transparent 55%),
     linear-gradient(180deg, var(--bg1), var(--bg2));
-  overflow-x:hidden;
+  background-repeat: no-repeat;
 }
 
 /* ===== transitions (welcome <-> app) ===== */
-.fadeIn{
-  animation: fadeIn .28s ease forwards;
-}
-.fadeOut{
-  animation: fadeOut .28s ease forwards;
-}
+.fadeIn{ animation: fadeIn .28s ease forwards; }
+.fadeOut{ animation: fadeOut .28s ease forwards; }
+
 @keyframes fadeIn{
   from{ opacity:0; transform: translateY(6px); }
   to{ opacity:1; transform: translateY(0); }
@@ -57,12 +72,14 @@ body{
   margin: 0 auto;
 }
 
+/* ✅ fixed glow (not inside .page bounds) */
 .bgGlow{
-  position:absolute;
+  position: fixed;
   inset:-200px;
   filter: blur(70px);
   opacity:.65;
   pointer-events:none;
+  z-index: -2;
 }
 
 /* ===== logo ===== */
@@ -164,14 +181,6 @@ body{
   flex: 1;
 }
 
-.heroTitle{
-  margin:0;
-  font-size:42px;
-  line-height:1.08;
-  letter-spacing:-.02em;
-  text-shadow: 0 10px 40px rgba(0,0,0,.45);
-}
-
 .heroSubtitle{
   margin:14px 0 0;
   color:var(--muted);
@@ -212,9 +221,7 @@ body{
   align-items:flex-start;
   margin-bottom:10px;
 }
-.trustTitle{
-  font-weight:700;
-}
+.trustTitle{ font-weight:700; }
 .trustMeta{
   color:var(--muted2);
   font-size:12px;
@@ -270,9 +277,7 @@ body{
 .shareTitle{ font-weight:700; }
 .shareHint{ color:var(--muted); font-size:13px; margin-top:4px; }
 
-.mainCard{
-  padding:16px;
-}
+.mainCard{ padding:16px; }
 
 /* ===== top row ===== */
 .mainTop{
@@ -428,11 +433,8 @@ body{
   color: rgba(240,245,255,.92);
   font-weight:650;
 }
-.rowOn{
-  background: rgba(124,77,255,.10);
-}
+.rowOn{ background: rgba(124,77,255,.10); }
 
-/* footer tip */
 .footNote{
   margin-top: 12px;
   color: var(--muted2);
@@ -449,7 +451,7 @@ body{
   .welcomeInner{ max-width: 520px; }
 }
 
-/* wallet dropdown "clickable" (some stacks break pointer events) */
+/* wallet dropdown "clickable" */
 .wallet-adapter-dropdown-list{
   pointer-events: auto !important;
 }
