@@ -26,7 +26,9 @@ type EmptyTokenAcc = {
 
 const WSOL_MINT = new PublicKey("So11111111111111111111111111111111111111112");
 
-const APP_NAME = String(import.meta.env.VITE_APP_NAME ?? "Solana Rent Claimer");
+// ✅ Brand: default app name is now Solint (env can still override if you want)
+const APP_NAME = String(import.meta.env.VITE_APP_NAME ?? "Solint");
+
 const FEE_BPS = Number(import.meta.env.VITE_FEE_BPS ?? 300); // 300 = 3%
 const FEE_RECIPIENT_STR = String(import.meta.env.VITE_FEE_RECIPIENT ?? "");
 const PUBLIC_APP_URL = String(
@@ -402,8 +404,8 @@ export default function App() {
     const emptyCount = empties.length;
     const text =
       emptyCount > 0
-        ? `I found ${emptyCount} empty Solana token accounts with locked rent. Reclaim yours 🔥`
-        : `Checked my Solana wallet — already clean ✅`;
+        ? `I found ${emptyCount} empty Solana token accounts with locked rent. Claimed with ${APP_NAME} 🔥`
+        : `Checked my Solana wallet — already clean ✅ (${APP_NAME})`;
 
     const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(
       PUBLIC_APP_URL
@@ -430,7 +432,8 @@ export default function App() {
 
       <header className="hero">
         <div className="heroLeft">
-          <h1 className="heroTitle">{t.title}</h1>
+          {/* ✅ Only change: add brand3d class for the title */}
+          <h1 className="heroTitle brand3d">{t.title}</h1>
           <p className="heroSubtitle">{t.subtitle}</p>
         </div>
 

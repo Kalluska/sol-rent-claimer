@@ -13,13 +13,17 @@
   --accent2:#39c0ff;
   --shadow: 0 20px 60px rgba(0,0,0,.55);
   --radius:22px;
+
+  /* ✅ Brand font (loaded in index.html) */
+  --font-brand: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    "Apple Color Emoji","Segoe UI Emoji";
 }
 
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
   margin:0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  font-family: var(--font-brand);
   color:var(--text);
   background:
     radial-gradient(1200px 700px at 20% 20%, rgba(124,77,255,.35), transparent 55%),
@@ -27,6 +31,18 @@ body{
     radial-gradient(900px 700px at 60% 90%, rgba(255,87,34,.18), transparent 55%),
     linear-gradient(180deg, var(--bg1), var(--bg2));
   overflow-x:hidden;
+}
+
+/* ✅ Solint title 3D vibe (only used if you add class in App.tsx) */
+.brand3d{
+  font-weight:700;
+  letter-spacing:-0.02em;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.10),
+    0 2px 0 rgba(255, 255, 255, 0.08),
+    0 10px 24px rgba(0, 0, 0, 0.35),
+    0 0 18px rgba(255, 255, 255, 0.08);
+  transform: translateZ(0);
 }
 
 /* page */
