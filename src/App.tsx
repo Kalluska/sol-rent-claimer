@@ -152,7 +152,8 @@ export default function App() {
   const { connection } = useConnection();
   const { publicKey, connected, sendTransaction } = useWallet();
 
-  const [lang, setLang] = useState<Lang>("fi");
+  // ✅ Default language is EN
+  const [lang, setLang] = useState<Lang>("en");
   const t = TEXT[lang];
 
   const [walletSol, setWalletSol] = useState<number | null>(null);
@@ -212,6 +213,15 @@ export default function App() {
   }, [empties]);
 
   const estReturnSol = useMemo(() => lamportsToSol(netLamports), [netLamports]);
+
+  // ✅ Lock scroll while welcome is shown (removes "seam" when scrolling)
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = view === "welcome" ? "hidden" : (prev || "auto");
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [view]);
 
   // Keep view in sync with wallet connection, with smooth transitions
   useEffect(() => {
@@ -449,7 +459,6 @@ export default function App() {
   const feeText = useMemo(() => pctFromBps(FEE_BPS), []);
 
   function openWalletModal() {
-    // Click the hidden WalletMultiButton internally to open the modal
     const btn = hiddenWalletBtnRef.current?.querySelector("button") as HTMLButtonElement | null;
     btn?.click();
   }
