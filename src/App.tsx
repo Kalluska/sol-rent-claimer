@@ -26,13 +26,13 @@ type EmptyTokenAcc = {
 
 const WSOL_MINT = new PublicKey("So11111111111111111111111111111111111111112");
 
-// ✅ Brand: default app name is now Solint (env can still override if you want)
+// Brand (can be overridden via Vercel env VITE_APP_NAME if you want)
 const APP_NAME = String(import.meta.env.VITE_APP_NAME ?? "Solint");
 
 const FEE_BPS = Number(import.meta.env.VITE_FEE_BPS ?? 300); // 300 = 3%
 const FEE_RECIPIENT_STR = String(import.meta.env.VITE_FEE_RECIPIENT ?? "");
 const PUBLIC_APP_URL = String(
-  import.meta.env.VITE_PUBLIC_URL ?? "https://sol-rent-claimer.vercel.app"
+  import.meta.env.VITE_PUBLIC_URL ?? "https://solint.vercel.app"
 );
 const REPO_URL = String(import.meta.env.VITE_REPO_URL ?? "");
 
@@ -202,7 +202,7 @@ export default function App() {
 
   const estReturnSol = useMemo(() => lamportsToSol(netLamports), [netLamports]);
 
-  // wallet balance + listener (NO .then() bug)
+  // wallet balance + listener
   useEffect(() => {
     let stop = false;
     let subId: number | null = null;
@@ -432,8 +432,8 @@ export default function App() {
 
       <header className="hero">
         <div className="heroLeft">
-          {/* ✅ Only change: add brand3d class for the title */}
-          <h1 className="heroTitle brand3d">{t.title}</h1>
+          {/* ✅ Logo only (place your file at /public/logo.png) */}
+          <img src="/logo.png" alt="Solint" className="appLogo" />
           <p className="heroSubtitle">{t.subtitle}</p>
         </div>
 

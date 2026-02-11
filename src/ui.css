@@ -14,7 +14,6 @@
   --shadow: 0 20px 60px rgba(0,0,0,.55);
   --radius:22px;
 
-  /* ✅ Brand font (loaded in index.html) */
   --font-brand: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
     "Apple Color Emoji","Segoe UI Emoji";
 }
@@ -33,19 +32,36 @@ body{
   overflow-x:hidden;
 }
 
-/* ✅ Solint title 3D vibe (only used if you add class in App.tsx) */
-.brand3d{
-  font-weight:700;
-  letter-spacing:-0.02em;
-  text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.10),
-    0 2px 0 rgba(255, 255, 255, 0.08),
-    0 10px 24px rgba(0, 0, 0, 0.35),
-    0 0 18px rgba(255, 255, 255, 0.08);
-  transform: translateZ(0);
+/* ===== LOGO ===== */
+
+.appLogo{
+  width:120px;
+  height:auto;
+  display:block;
+  animation: glowPulse 3.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 18px rgba(124,77,255,.35));
 }
 
-/* page */
+@keyframes glowPulse{
+  0%{
+    filter: drop-shadow(0 0 12px rgba(124,77,255,.25))
+            drop-shadow(0 0 28px rgba(57,192,255,.15));
+    transform: scale(1);
+  }
+  50%{
+    filter: drop-shadow(0 0 24px rgba(124,77,255,.55))
+            drop-shadow(0 0 48px rgba(57,192,255,.35));
+    transform: scale(1.03);
+  }
+  100%{
+    filter: drop-shadow(0 0 12px rgba(124,77,255,.25))
+            drop-shadow(0 0 28px rgba(57,192,255,.15));
+    transform: scale(1);
+  }
+}
+
+/* ===== PAGE ===== */
+
 .page{
   position:relative;
   min-height:100vh;
@@ -238,7 +254,6 @@ body{
     inset 0 -10px 22px rgba(0,0,0,.22);
 }
 
-/* wallet adapter button */
 .walletBtn{
   background: linear-gradient(180deg, rgba(124,77,255,.95), rgba(124,77,255,.55)) !important;
   border: 1px solid rgba(124,77,255,.75) !important;
@@ -336,14 +351,12 @@ body{
   background: rgba(124,77,255,.10);
 }
 
-/* footer tip */
 .footNote{
   margin-top: 12px;
   color: var(--muted2);
   font-size:12px;
 }
 
-/* responsive */
 @media (max-width: 860px){
   .heroTitle{ font-size:34px; }
   .trustGrid{ grid-template-columns: 1fr; }
@@ -352,7 +365,6 @@ body{
   .actions{ justify-content:flex-start; }
 }
 
-/* wallet dropdown "clickable" (some stacks break pointer events) */
 .wallet-adapter-dropdown-list{
   pointer-events: auto !important;
 }
