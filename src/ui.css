@@ -35,10 +35,11 @@ body{
 /* ===== LOGO ===== */
 
 .appLogo{
-  width:120px;
+  width:170px;              /* ✅ bigger */
   height:auto;
   display:block;
-  animation: glowPulse 3.5s ease-in-out infinite;
+  margin: 6px auto 0;       /* ✅ centered inside heroLeft */
+  animation: glowPulse 3.6s ease-in-out infinite;
   filter: drop-shadow(0 0 18px rgba(124,77,255,.35));
 }
 
@@ -49,9 +50,9 @@ body{
     transform: scale(1);
   }
   50%{
-    filter: drop-shadow(0 0 24px rgba(124,77,255,.55))
-            drop-shadow(0 0 48px rgba(57,192,255,.35));
-    transform: scale(1.03);
+    filter: drop-shadow(0 0 26px rgba(124,77,255,.55))
+            drop-shadow(0 0 54px rgba(57,192,255,.35));
+    transform: scale(1.035);
   }
   100%{
     filter: drop-shadow(0 0 12px rgba(124,77,255,.25))
@@ -60,8 +61,7 @@ body{
   }
 }
 
-/* ===== PAGE ===== */
-
+/* page */
 .page{
   position:relative;
   min-height:100vh;
@@ -86,6 +86,17 @@ body{
   gap:18px;
   margin-bottom:18px;
 }
+
+/* ✅ center the left block contents a bit more */
+.heroLeft{
+  display:flex;
+  flex-direction:column;
+  align-items:center;   /* centers logo + subtitle */
+  text-align:center;    /* centers subtitle lines */
+  padding-top: 6px;
+  flex: 1;              /* helps it feel centered overall */
+}
+
 .heroTitle{
   margin:0;
   font-size:42px;
@@ -93,10 +104,12 @@ body{
   letter-spacing:-.02em;
   text-shadow: 0 10px 40px rgba(0,0,0,.45);
 }
+
 .heroSubtitle{
-  margin:10px 0 0;
+  margin:14px 0 0;      /* a bit more spacing from logo */
   color:var(--muted);
   font-size:15px;
+  max-width: 720px;     /* prevents too wide text */
 }
 
 .langBtn{
@@ -358,6 +371,7 @@ body{
 }
 
 @media (max-width: 860px){
+  .appLogo{ width:150px; }
   .heroTitle{ font-size:34px; }
   .trustGrid{ grid-template-columns: 1fr; }
   .statsGrid{ grid-template-columns: 1fr; }
