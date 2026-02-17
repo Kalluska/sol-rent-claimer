@@ -39,6 +39,27 @@ const REPO_URL = String(import.meta.env.VITE_REPO_URL ?? "");
 // 🔥 batch size upgrade
 const MAX_ACCOUNTS_PER_TX = 13;
 
+// 🔥 NEW: global total reclaimed storage key
+const TOTAL_KEY = "solint_total_reclaimed_sol_v1";
+
+// 🔥 NEW: rotating facts (bilingual)
+const FACTS: Record<Lang, string[]> = {
+  en: [
+    "Most Solana wallets have locked rent sitting in empty token accounts.",
+    "Closing empty SPL & Token-2022 accounts reclaims SOL rent back to your wallet.",
+    "Token-2022 accounts also lock SOL rent (not just SPL).",
+    "If you trade a lot, you likely accumulate many empty token accounts over time.",
+    "This tool is non-custodial: nothing moves without your signature.",
+  ],
+  fi: [
+    "Monissa Solana-walleteissa on lukittua rent-SOLia tyhjissä token-tileissä.",
+    "Tyhjien SPL & Token-2022 -tilien sulkeminen palauttaa rent-SOLin takaisin walletiin.",
+    "Myös Token-2022 -tilit lukitsevat rent-SOLia (ei vain SPL).",
+    "Jos treidaat paljon, tyhjiä token-tilejä kertyy helposti ajan myötä.",
+    "Työkalu on non-custodial: mitään ei siirry ilman allekirjoitustasi.",
+  ],
+};
+
 const TEXT: Record<Lang, any> = {
   fi: {
     title: APP_NAME,
@@ -46,8 +67,7 @@ const TEXT: Record<Lang, any> = {
     welcomeSub:
       "Yhdistä lompakko ja reclaimaa tyhjien token-tilien lukitsema SOL.",
     connectCta: "Yhdistä lompakko",
-    subtitle:
-      "Skannaa tyhjät SPL/Token-2022 -tilit ja palauta niihin lukittu SOL.",
+    subtitle: "Skannaa tyhjät SPL/Token-2022 -tilit ja palauta niihin lukittu SOL.",
     trustTitle: "Safety & transparency",
     trustBullets: [
       "Ei custodyä: appi ei voi siirtää varoja ilman allekirjoitustasi.",
@@ -59,10 +79,7 @@ const TEXT: Record<Lang, any> = {
       "Vain tilit joiden owner on sinun wallet",
     ],
     neverCloses: "Ei sulje koskaan",
-    neverClosesBullets: [
-      "WSOL-tilit (So111…)",
-      "Tilit joissa on token-saldoa (≠ 0)",
-    ],
+    neverClosesBullets: ["WSOL-tilit (So111…)", "Tilit joissa on token-saldoa (≠ 0)"],
     feeLine: (pct: string) =>
       `Fee: ${pct} onnistuneesta palautuksesta (per batch). Fee veloitetaan vain onnistuneissa claim-transaktioissa.`,
     connectHint: "Yhdistä lompakko",
@@ -87,14 +104,14 @@ const TEXT: Record<Lang, any> = {
     shareHint: "Avaa X/Twitter ja jaa tulos (auttaa saamaan käyttäjiä).",
     lastTx: "Viimeisin tx",
 
-    // success modal
+    // 🔥 NEW (success modal)
     claimedTitle: (x: string) => `Claimed ${x} successfully ✅`,
     claimedShare: "Share on X",
     claimedClose: "Close",
-    claimedCopyAmount: "Copy amount",
-    claimedCopyText: "Copy post text",
-    copiedOk: "Copied ✅",
-    claimedMeta: "Haluatko jakaa tuloksen tai kopioida määrän?",
+
+    // 🔥 NEW (global counter labels)
+    totalBannerPrefix: "All-time reclaimed",
+    factsPrefix: "Did you know?",
   },
   en: {
     title: APP_NAME,
@@ -114,10 +131,7 @@ const TEXT: Record<Lang, any> = {
       "Only accounts owned by your wallet",
     ],
     neverCloses: "Never closes",
-    neverClosesBullets: [
-      "WSOL accounts (So111…)",
-      "Accounts with token balance (≠ 0)",
-    ],
+    neverClosesBullets: ["WSOL accounts (So111…)", "Accounts with token balance (≠ 0)"],
     feeLine: (pct: string) =>
       `Fee: ${pct} of successfully reclaimed SOL (per batch). Fee is charged only on successful claim transactions.`,
     connectHint: "Connect wallet",
@@ -142,14 +156,14 @@ const TEXT: Record<Lang, any> = {
     shareHint: "Opens X/Twitter to share your result (helps you grow users).",
     lastTx: "Last tx",
 
-    // success modal
+    // 🔥 NEW (success modal)
     claimedTitle: (x: string) => `Claimed ${x} successfully ✅`,
     claimedShare: "Share on X",
     claimedClose: "Close",
-    claimedCopyAmount: "Copy amount",
-    claimedCopyText: "Copy post text",
-    copiedOk: "Copied ✅",
-    claimedMeta: "Want to share your result or copy the amount?",
+
+    // 🔥 NEW (global counter labels)
+    totalBannerPrefix: "All-time reclaimed",
+    factsPrefix: "Did you know?",
   },
 };
 
@@ -198,22 +212,26 @@ export default function App() {
 
   // View transitions
   const [view, setView] = useState<"welcome" | "app">("welcome");
-  const [anim, setAnim] = useState<"none" | "toApp" | "toWelcome">(
-    "none"
-  );
+  const [anim, setAnim] = useState<"none" | "toApp" | "toWelcome">("none");
 
   // Used to open the wallet adapter modal from our custom button
   const hiddenWalletBtnRef = useRef<HTMLDivElement | null>(null);
 
-  // 🔥 Success overlay + next-level extras
+  // 🔥 Success overlay state + count-up anim
   const [successOpen, setSuccessOpen] = useState(false);
   const [claimedSol, setClaimedSol] = useState<number>(0); // final amount
-  const [claimedAnim, setClaimedAnim] = useState<number>(0); // animated amount
+  const [claimedAnim, setClaimedAnim] = useState<number>(0); // animated
   const rafRef = useRef<number | null>(null);
 
-  const [copied, setCopied] = useState<"none" | "amount" | "text">("none");
-  const [burstKey, setBurstKey] = useState(0);
-  const copyTimerRef = useRef<number | null>(null);
+  // 🔥 NEW: Global total reclaimed (localStorage-based)
+  const [totalReclaimedSol, setTotalReclaimedSol] = useState<number>(0);
+  const [totalAnim, setTotalAnim] = useState<number>(0);
+  const totalRafRef = useRef<number | null>(null);
+
+  // 🔥 NEW: Rotating facts
+  const [factIndex, setFactIndex] = useState(0);
+  const [factFade, setFactFade] = useState<"in" | "out">("in");
+  const factTimerRef = useRef<number | null>(null);
 
   const feeRecipient = useMemo(() => {
     try {
@@ -230,9 +248,7 @@ export default function App() {
       .filter(([, v]) => v)
       .map(([k]) => k);
     const map = new Map(empties.map((e) => [e.pubkey.toBase58(), e]));
-    return ids
-      .map((id) => map.get(id))
-      .filter(Boolean) as EmptyTokenAcc[];
+    return ids.map((id) => map.get(id)).filter(Boolean) as EmptyTokenAcc[];
   }, [selected, empties]);
 
   const grossLamports = useMemo(
@@ -256,16 +272,13 @@ export default function App() {
     return lamportsToSol(avg);
   }, [empties]);
 
-  const estReturnSol = useMemo(
-    () => lamportsToSol(netLamports),
-    [netLamports]
-  );
+  const estReturnSol = useMemo(() => lamportsToSol(netLamports), [netLamports]);
 
   // ✅ Lock scroll while welcome is shown (removes "seam" when scrolling)
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow =
-      view === "welcome" ? "hidden" : prev || "auto";
+      view === "welcome" ? "hidden" : (prev || "auto");
     return () => {
       document.body.style.overflow = prev;
     };
@@ -361,13 +374,73 @@ export default function App() {
     };
   }, [successOpen, claimedSol]);
 
-  // cleanup timers
+  // 🔥 NEW: Load total reclaimed from localStorage once
   useEffect(() => {
-    return () => {
-      if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
-      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
-    };
+    try {
+      const raw = localStorage.getItem(TOTAL_KEY);
+      const n = raw ? Number(raw) : 0;
+      const safe = Number.isFinite(n) && n > 0 ? n : 0;
+      setTotalReclaimedSol(safe);
+      setTotalAnim(safe);
+    } catch {
+      setTotalReclaimedSol(0);
+      setTotalAnim(0);
+    }
   }, []);
+
+  // 🔥 NEW: Total counter count-up when total changes
+  useEffect(() => {
+    if (totalRafRef.current != null) cancelAnimationFrame(totalRafRef.current);
+
+    const from = totalAnim;
+    const to = totalReclaimedSol;
+    const start = performance.now();
+    const durMs = 900;
+
+    function easeOutCubic(x: number) {
+      return 1 - Math.pow(1 - x, 3);
+    }
+
+    function tick(now: number) {
+      const p = Math.min((now - start) / durMs, 1);
+      const v = from + (to - from) * easeOutCubic(p);
+      setTotalAnim(v);
+      if (p < 1) totalRafRef.current = requestAnimationFrame(tick);
+    }
+
+    totalRafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (totalRafRef.current != null) cancelAnimationFrame(totalRafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalReclaimedSol]);
+
+  // 🔥 NEW: Facts rotator (5s) with fade
+  useEffect(() => {
+    // only rotate when app view is shown (optional)
+    if (view !== "app") return;
+
+    function scheduleNext() {
+      factTimerRef.current = window.setTimeout(() => {
+        setFactFade("out");
+        window.setTimeout(() => {
+          setFactIndex((p) => {
+            const arr = FACTS[lang] || FACTS.en;
+            return (p + 1) % arr.length;
+          });
+          setFactFade("in");
+          scheduleNext();
+        }, 220);
+      }, 5000);
+    }
+
+    scheduleNext();
+
+    return () => {
+      if (factTimerRef.current != null) window.clearTimeout(factTimerRef.current);
+    };
+  }, [view, lang]);
 
   function toggleOne(id: string) {
     setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -386,9 +459,7 @@ export default function App() {
   async function fetchEmptyTokenAccountsForProgram(programId: PublicKey) {
     if (!publicKey) return [] as EmptyTokenAcc[];
 
-    const res = await connection.getParsedTokenAccountsByOwner(publicKey, {
-      programId,
-    });
+    const res = await connection.getParsedTokenAccountsByOwner(publicKey, { programId });
 
     const out: EmptyTokenAcc[] = [];
     for (const it of res.value) {
@@ -450,66 +521,18 @@ export default function App() {
     } catch (e: any) {
       setEmpties([]);
       setSelected({});
-      setStatus(
-        (lang === "fi" ? "Virhe skannauksessa: " : "Scan error: ") +
-          String(e?.message ?? e)
-      );
+      setStatus((lang === "fi" ? "Virhe skannauksessa: " : "Scan error: ") + String(e?.message ?? e));
     } finally {
       setScanning(false);
     }
   }
 
-  function claimShareText(amountSol: number) {
-    return `I just reclaimed ${amountSol.toFixed(
-      4
-    )} SOL from empty token accounts on Solana. (${APP_NAME})`;
-  }
-
-  async function copyToClipboard(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.left = "-9999px";
-        ta.style.top = "-9999px";
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        const ok = document.execCommand("copy");
-        document.body.removeChild(ta);
-        return ok;
-      } catch {
-        return false;
-      }
-    }
-  }
-
-  function flashCopied(kind: "amount" | "text") {
-    setCopied(kind);
-    if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
-    copyTimerRef.current = window.setTimeout(() => setCopied("none"), 1200);
-  }
-
   function shareClaimAmount(amountSol: number) {
-    const text = claimShareText(amountSol);
-    const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-      text
-    )}&url=${encodeURIComponent(PUBLIC_APP_URL)}`;
+    const text = `I just reclaimed ${amountSol.toFixed(4)} SOL from empty token accounts on Solana. (${APP_NAME})`;
+    const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(
+      PUBLIC_APP_URL
+    )}`;
     window.open(intent, "_blank", "noopener,noreferrer");
-  }
-
-  function ConfettiBurst({ k }: { k: number }) {
-    return (
-      <div key={k} className="confetti">
-        {Array.from({ length: 26 }).map((_, i) => (
-          <span key={i} className="confettiBit" />
-        ))}
-      </div>
-    );
   }
 
   async function claimSelected() {
@@ -563,11 +586,7 @@ export default function App() {
           );
         }
 
-        setStatus(
-          `${lang === "fi" ? "Claim batch" : "Claim batch"} ${i + 1}/${
-            batches.length
-          }…`
-        );
+        setStatus(`${lang === "fi" ? "Claim batch" : "Claim batch"} ${i + 1}/${batches.length}…`);
 
         const sig = await sendTransaction(tx, connection, { skipPreflight: false });
         setLastSig(sig);
@@ -596,17 +615,20 @@ export default function App() {
 
       setStatus(lang === "fi" ? "Valmis ✅" : "Done ✅");
 
-      // open success overlay with claimed amount + confetti
+      // open success overlay with claimed amount
       const claimed = lamportsToSol(totalNetLamports);
       setClaimedSol(claimed);
-      setCopied("none");
-      setBurstKey((x) => x + 1);
+
+      // 🔥 NEW: update all-time total (localStorage)
+      try {
+        const nextTotal = Math.max(0, (totalReclaimedSol || 0) + claimed);
+        setTotalReclaimedSol(nextTotal);
+        localStorage.setItem(TOTAL_KEY, String(nextTotal));
+      } catch {}
+
       setSuccessOpen(true);
     } catch (e: any) {
-      setStatus(
-        (lang === "fi" ? "Claim-virhe: " : "Claim error: ") +
-          String(e?.message ?? e)
-      );
+      setStatus((lang === "fi" ? "Claim-virhe: " : "Claim error: ") + String(e?.message ?? e));
     } finally {
       setClaiming(false);
     }
@@ -619,9 +641,9 @@ export default function App() {
         ? `I found ${emptyCount} empty Solana token accounts with locked rent. Claimed with ${APP_NAME} 🔥`
         : `Checked my Solana wallet — already clean ✅ (${APP_NAME})`;
 
-    const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-      text
-    )}&url=${encodeURIComponent(PUBLIC_APP_URL)}`;
+    const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(
+      PUBLIC_APP_URL
+    )}`;
 
     window.open(intent, "_blank", "noopener,noreferrer");
   }
@@ -629,9 +651,7 @@ export default function App() {
   const feeText = useMemo(() => pctFromBps(FEE_BPS), []);
 
   function openWalletModal() {
-    const btn = hiddenWalletBtnRef.current?.querySelector(
-      "button"
-    ) as HTMLButtonElement | null;
+    const btn = hiddenWalletBtnRef.current?.querySelector("button") as HTMLButtonElement | null;
     btn?.click();
   }
 
@@ -649,7 +669,7 @@ export default function App() {
           pointer-events: auto !important;
         }
 
-        /* Success overlay */
+        /* 🔥 Success overlay styles */
         .successOverlay{
           position: fixed;
           inset: 0;
@@ -662,7 +682,7 @@ export default function App() {
           padding: 18px;
         }
         .successCard{
-          width: min(580px, 100%);
+          width: min(560px, 100%);
           background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
           border: 1px solid rgba(255,255,255,.12);
           border-radius: 22px;
@@ -670,8 +690,6 @@ export default function App() {
           padding: 26px 22px 20px;
           text-align: center;
           animation: successIn .22s ease-out;
-          position: relative;
-          overflow: hidden;
         }
         @keyframes successIn{
           from { opacity: 0; transform: translateY(10px) scale(.985); }
@@ -683,32 +701,11 @@ export default function App() {
           margin: 0 0 10px;
         }
         .successAmount{
-          font-size: 42px;
+          font-size: 40px;
           font-weight: 900;
           letter-spacing: -.02em;
-          margin: 6px 0 10px;
-          text-shadow: 0 0 24px rgba(124,77,255,.22);
-        }
-        .amountGlow{
-          display:inline-block;
-          background: linear-gradient(90deg, rgba(124,77,255,1), rgba(57,192,255,1));
-          -webkit-background-clip: text;
-          background-clip: text;
-          color: transparent;
-          text-shadow:
-            0 0 28px rgba(124,77,255,.18),
-            0 0 38px rgba(57,192,255,.14);
-          filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
-          animation: glowPulse 1.6s ease-in-out infinite;
-        }
-        .amountUnit{
-          color: rgba(240,245,255,.92);
-          font-weight: 850;
-          letter-spacing: -.01em;
-        }
-        @keyframes glowPulse{
-          0%,100%{ transform: translateY(0); opacity: 1; }
-          50%{ transform: translateY(-1px); opacity: .96; }
+          margin: 4px 0 10px;
+          text-shadow: 0 0 24px rgba(124,77,255,.35);
         }
         .successMeta{
           color: rgba(255,255,255,.68);
@@ -722,109 +719,81 @@ export default function App() {
           flex-wrap: wrap;
         }
 
-        /* Confetti burst (no libs) */
-        .confetti{
-          position:absolute;
-          inset:0;
-          pointer-events:none;
-          overflow:hidden;
-          border-radius:22px;
+        /* 🔥 NEW: global total banner + rotating fact */
+        .topBanners{
+          display:flex;
+          flex-direction:column;
+          gap:10px;
+          margin: 10px 0 14px;
         }
-        .confettiBit{
-          position:absolute;
-          left: 50%;
-          top: 50%;
-          width: 10px;
-          height: 6px;
-          border-radius: 3px;
+        .totalBanner{
+          background: linear-gradient(90deg, rgba(124,77,255,.35), rgba(57,192,255,.28));
+          border: 1px solid rgba(255,255,255,.10);
+          border-radius: 18px;
+          padding: 12px 14px;
+          box-shadow: 0 18px 50px rgba(0,0,0,.35);
+          backdrop-filter: blur(14px);
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:10px;
+        }
+        .totalLeft{
+          display:flex;
+          flex-direction:column;
+          gap:2px;
+          min-width:0;
+        }
+        .totalLabel{
+          color: rgba(255,255,255,.70);
+          font-size: 12px;
+        }
+        .totalValue{
+          font-weight: 900;
+          letter-spacing: -.02em;
+          font-size: 18px;
+          white-space:nowrap;
+          text-shadow: 0 0 22px rgba(124,77,255,.22);
+        }
+        .totalValue span{
+          background: linear-gradient(90deg, rgba(124,77,255,1), rgba(57,192,255,1));
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          filter: drop-shadow(0 10px 18px rgba(0,0,0,.25));
+          animation: totalPulse 1.8s ease-in-out infinite;
+        }
+        @keyframes totalPulse{
+          0%,100%{ opacity:1; transform: translateY(0); }
+          50%{ opacity:.96; transform: translateY(-1px); }
+        }
+
+        .factBanner{
+          background: rgba(255,255,255,.05);
+          border: 1px solid rgba(255,255,255,.08);
+          border-radius: 18px;
+          padding: 10px 14px;
+          color: rgba(255,255,255,.72);
+          font-size: 13px;
+          box-shadow: 0 18px 50px rgba(0,0,0,.28);
+          backdrop-filter: blur(14px);
+          transition: opacity .22s ease, transform .22s ease;
+          opacity: 1;
+        }
+        .factBanner.out{
           opacity: 0;
-          transform: translate(-50%,-50%) rotate(0deg);
-          animation: pop 900ms ease-out forwards;
-          background: rgba(124,77,255,.95);
+          transform: translateY(1px);
         }
-        .confettiBit:nth-child(2n){ background: rgba(57,192,255,.95); }
-        .confettiBit:nth-child(3n){ background: rgba(255,255,255,.92); }
-        .confettiBit:nth-child(5n){ background: rgba(255,87,34,.85); }
-
-        .confettiBit:nth-child(3n){ width: 8px; height: 8px; border-radius: 999px; }
-        .confettiBit:nth-child(4n){ width: 12px; height: 5px; border-radius: 2px; }
-
-        @keyframes pop{
-          0%{ opacity: 0; transform: translate(-50%,-50%) scale(.9) rotate(0deg); }
-          10%{ opacity: 1; }
-          100%{
-            opacity: 0;
-            transform:
-              translate(calc(-50% + (var(--dx, 0px))), calc(-50% + (var(--dy, -180px))))
-              rotate(260deg)
-              scale(1);
-          }
+        .factPrefix{
+          color: rgba(255,255,255,.55);
+          margin-right: 8px;
         }
-
-        /* vectors */
-        .confettiBit:nth-child(1){  --dx:-220px; --dy:-140px; }
-        .confettiBit:nth-child(2){  --dx:-180px; --dy:-210px; }
-        .confettiBit:nth-child(3){  --dx:-120px; --dy:-170px; }
-        .confettiBit:nth-child(4){  --dx:-60px;  --dy:-240px; }
-        .confettiBit:nth-child(5){  --dx:-10px;  --dy:-190px; }
-        .confettiBit:nth-child(6){  --dx:60px;   --dy:-240px; }
-        .confettiBit:nth-child(7){  --dx:120px;  --dy:-180px; }
-        .confettiBit:nth-child(8){  --dx:180px;  --dy:-210px; }
-        .confettiBit:nth-child(9){  --dx:220px;  --dy:-140px; }
-        .confettiBit:nth-child(10){ --dx:-240px; --dy:-40px;  }
-        .confettiBit:nth-child(11){ --dx:-200px; --dy:-80px;  }
-        .confettiBit:nth-child(12){ --dx:-140px; --dy:-60px;  }
-        .confettiBit:nth-child(13){ --dx:-80px;  --dy:-90px;  }
-        .confettiBit:nth-child(14){ --dx:80px;   --dy:-90px;  }
-        .confettiBit:nth-child(15){ --dx:140px;  --dy:-60px;  }
-        .confettiBit:nth-child(16){ --dx:200px;  --dy:-80px;  }
-        .confettiBit:nth-child(17){ --dx:240px;  --dy:-40px;  }
-        .confettiBit:nth-child(18){ --dx:-220px; --dy:120px;  }
-        .confettiBit:nth-child(19){ --dx:-160px; --dy:160px;  }
-        .confettiBit:nth-child(20){ --dx:-80px;  --dy:140px;  }
-        .confettiBit:nth-child(21){ --dx:80px;   --dy:140px;  }
-        .confettiBit:nth-child(22){ --dx:160px;  --dy:160px;  }
-        .confettiBit:nth-child(23){ --dx:220px;  --dy:120px;  }
-        .confettiBit:nth-child(24){ --dx:-40px;  --dy:210px;  }
-        .confettiBit:nth-child(25){ --dx:40px;   --dy:210px;  }
-        .confettiBit:nth-child(26){ --dx:0px;    --dy:240px;  }
-
-        /* delays */
-        .confettiBit:nth-child(1){  animation-delay: 0ms;  }
-        .confettiBit:nth-child(2){  animation-delay: 20ms; }
-        .confettiBit:nth-child(3){  animation-delay: 40ms; }
-        .confettiBit:nth-child(4){  animation-delay: 60ms; }
-        .confettiBit:nth-child(5){  animation-delay: 80ms; }
-        .confettiBit:nth-child(6){  animation-delay: 100ms;}
-        .confettiBit:nth-child(7){  animation-delay: 120ms;}
-        .confettiBit:nth-child(8){  animation-delay: 140ms;}
-        .confettiBit:nth-child(9){  animation-delay: 160ms;}
-        .confettiBit:nth-child(10){ animation-delay: 180ms;}
-        .confettiBit:nth-child(11){ animation-delay: 200ms;}
-        .confettiBit:nth-child(12){ animation-delay: 220ms;}
-        .confettiBit:nth-child(13){ animation-delay: 240ms;}
-        .confettiBit:nth-child(14){ animation-delay: 260ms;}
-        .confettiBit:nth-child(15){ animation-delay: 280ms;}
-        .confettiBit:nth-child(16){ animation-delay: 300ms;}
-        .confettiBit:nth-child(17){ animation-delay: 320ms;}
-        .confettiBit:nth-child(18){ animation-delay: 340ms;}
-        .confettiBit:nth-child(19){ animation-delay: 360ms;}
-        .confettiBit:nth-child(20){ animation-delay: 380ms;}
-        .confettiBit:nth-child(21){ animation-delay: 400ms;}
-        .confettiBit:nth-child(22){ animation-delay: 420ms;}
-        .confettiBit:nth-child(23){ animation-delay: 440ms;}
-        .confettiBit:nth-child(24){ animation-delay: 460ms;}
-        .confettiBit:nth-child(25){ animation-delay: 480ms;}
-        .confettiBit:nth-child(26){ animation-delay: 500ms;}
       `}</style>
 
       <div className="bgGlow" />
 
       {/* Hidden wallet button used to open modal from custom CTA */}
-      <div
-        ref={hiddenWalletBtnRef}
-        style={{ position: "absolute", left: -99999, top: -99999 }}
-      >
+      <div ref={hiddenWalletBtnRef} style={{ position: "absolute", left: -99999, top: -99999 }}>
         <WalletMultiButton className="walletBtn" />
       </div>
 
@@ -840,10 +809,7 @@ export default function App() {
               {t.connectCta}
             </button>
 
-            <button
-              className="langBtn welcomeLang"
-              onClick={() => setLang((p) => (p === "fi" ? "en" : "fi"))}
-            >
+            <button className="langBtn welcomeLang" onClick={() => setLang((p) => (p === "fi" ? "en" : "fi"))}>
               {lang.toUpperCase()}
             </button>
           </div>
@@ -853,53 +819,17 @@ export default function App() {
       {/* MAIN APP */}
       {showApp && (
         <div className={`${anim === "toWelcome" ? "fadeOut" : "fadeIn"}`}>
-          {/* Success overlay */}
+          {/* 🔥 Success overlay (only inside app view) */}
           {successOpen && (
-            <div
-              className="successOverlay"
-              onClick={() => setSuccessOpen(false)}
-              role="dialog"
-              aria-modal="true"
-            >
+            <div className="successOverlay" onClick={() => setSuccessOpen(false)} role="dialog" aria-modal="true">
               <div className="successCard" onClick={(e) => e.stopPropagation()}>
-                <ConfettiBurst k={burstKey} />
-
-                <div className="successTitle">
-                  {t.claimedTitle(`${claimedAnim.toFixed(4)} SOL`)}
-                </div>
-
-                <div className="successAmount">
-                  <span className="amountGlow">{claimedAnim.toFixed(4)}</span>{" "}
-                  <span className="amountUnit">SOL</span>
-                </div>
-
-                <div className="successMeta">{t.claimedMeta}</div>
-
+                <div className="successTitle">{t.claimedTitle(`${claimedAnim.toFixed(4)} SOL`)}</div>
+                <div className="successAmount">{claimedAnim.toFixed(4)} SOL</div>
+                <div className="successMeta">{lang === "fi" ? "Jaettavissa suoraan X:ään." : "Ready to share on X."}</div>
                 <div className="successActions">
                   <button className="btn btnPrimary btn3d" onClick={() => shareClaimAmount(claimedSol)}>
                     {t.claimedShare}
                   </button>
-
-                  <button
-                    className="btn btn3d"
-                    onClick={async () => {
-                      const ok = await copyToClipboard(`${claimedSol.toFixed(6)} SOL`);
-                      if (ok) flashCopied("amount");
-                    }}
-                  >
-                    {copied === "amount" ? t.copiedOk : t.claimedCopyAmount}
-                  </button>
-
-                  <button
-                    className="btn btn3d"
-                    onClick={async () => {
-                      const ok = await copyToClipboard(claimShareText(claimedSol));
-                      if (ok) flashCopied("text");
-                    }}
-                  >
-                    {copied === "text" ? t.copiedOk : t.claimedCopyText}
-                  </button>
-
                   <button className="btn btn3d" onClick={() => setSuccessOpen(false)}>
                     {t.claimedClose}
                   </button>
@@ -920,6 +850,26 @@ export default function App() {
               </button>
             </div>
           </header>
+
+          {/* 🔥 NEW: BANNERS */}
+          <div className="topBanners">
+            <div className="totalBanner">
+              <div className="totalLeft">
+                <div className="totalLabel">{t.totalBannerPrefix}</div>
+                <div className="totalValue">
+                  <span>{totalAnim.toFixed(4)}</span> SOL
+                </div>
+              </div>
+              <div className="dim" style={{ fontSize: 12 }}>
+                {lang === "fi" ? "Local (browser) counter" : "Local (browser) counter"}
+              </div>
+            </div>
+
+            <div className={`factBanner ${factFade === "out" ? "out" : ""}`}>
+              <span className="factPrefix">{t.factsPrefix}</span>
+              {(FACTS[lang] || FACTS.en)[factIndex]}
+            </div>
+          </div>
 
           <section className="trustCard">
             <div className="trustHeader">
@@ -981,9 +931,7 @@ export default function App() {
               <div className="walletWrap">
                 <WalletMultiButton className="walletBtn" />
                 <div className="walletMeta">
-                  <div className="dim">
-                    {publicKey ? `Wallet: ${shortPk(publicKey, 6, 4)}` : t.connectHint}
-                  </div>
+                  <div className="dim">{publicKey ? `Wallet: ${shortPk(publicKey, 6, 4)}` : t.connectHint}</div>
                 </div>
               </div>
 
@@ -1045,8 +993,7 @@ export default function App() {
               <div className="dim">
                 {t.selected}: {selectedAccounts.length} (
                 {t.gross} {lamportsToSol(grossLamports).toFixed(6)} SOL · {t.fee}{" "}
-                {lamportsToSol(feeLamports).toFixed(6)} SOL · {t.net}{" "}
-                {lamportsToSol(netLamports).toFixed(6)} SOL)
+                {lamportsToSol(feeLamports).toFixed(6)} SOL · {t.net} {lamportsToSol(netLamports).toFixed(6)} SOL)
               </div>
 
               <button className="btn btnSmall btn3d" onClick={() => setShowList((v) => !v)} disabled={!connected}>
