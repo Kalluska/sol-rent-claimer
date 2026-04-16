@@ -1,0 +1,50 @@
+const fs = require("fs");
+
+let file = fs.readFileSync("src/App.jsx", "utf-8");
+
+// 🔥 Korvaa kaikki rikkinäiset iconit täysin toimivilla
+file = file.replace(/function ShieldIcon[\s\S]*?\}/, `
+function ShieldIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+      <path d="M12 2l7 4v6c0 5-3.5 9-7 10-3.5-1-7-5-7-10V6l7-4z"
+        stroke="#9F7AEA"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+`);
+
+file = file.replace(/function LockIcon[\s\S]*?\}/, `
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+      <rect x="5" y="11" width="14" height="10" rx="2"
+        stroke="#9F7AEA"
+        strokeWidth="2"
+      />
+      <path d="M8 11V7a4 4 0 118 0v4"
+        stroke="#9F7AEA"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+`);
+
+file = file.replace(/function ZapIcon[\s\S]*?\}/, `
+function ZapIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+      <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"
+        stroke="#9F7AEA"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+`);
+
+fs.writeFileSync("src/App.jsx", file);
+console.log("🔥 ICONS FIXED");
