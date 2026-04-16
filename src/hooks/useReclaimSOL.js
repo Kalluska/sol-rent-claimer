@@ -3,7 +3,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { Transaction, SystemProgram, PublicKey } from '@solana/web3.js'
 import { TOKEN_PROGRAM_ID, createCloseAccountInstruction } from '@solana/spl-token'
 
-const FEE_RECIPIENT = new PublicKey('AtMahEVEDY7aip4raA7o6Nk6dkGtGKCJWaaSUfzgqpNN')
+const FEE_RECIPIENT = new PublicKey('AtMahEVEDY7aip4raA7o6Nk6dkGtCKCJWaaSUfzgqpNN')
 const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb')
 const FEE_RATE = 0.03
 const MAX_CLOSES_PER_TX = 8
