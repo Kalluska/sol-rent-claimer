@@ -71,13 +71,14 @@ function FAQItem({ q, a }) {
   )
 }
 
-import React from 'react'
+import React, { useState } from 'react'
 
 export default function Home({ onScan }) {
   const { publicKey, disconnect } = useWallet()
   const { setVisible } = useWalletModal()
   const connected = !!publicKey
   const short = (a) => a ? a.slice(0,4)+'...'+a.slice(-4) : ''
+  const [menuOpen, setMenuOpen] = useState(false)
 
   return (
     <div style={{position:'relative',minHeight:'100vh',background:'#060610',overflow:'hidden',fontFamily:"'DM Sans',sans-serif"}}>
@@ -216,7 +217,7 @@ export default function Home({ onScan }) {
         </div>
       </footer>
 
-      <style>{'@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}} *{box-sizing:border-box}'}</style>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}} *{box-sizing:border-box} @media(max-width:768px){.sol-desktop{display:none!important}}`}</style>
     </div>
   )
 }
