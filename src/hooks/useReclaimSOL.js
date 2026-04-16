@@ -3,17 +3,42 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { Transaction, SystemProgram, PublicKey } from '@solana/web3.js'
 import { TOKEN_PROGRAM_ID, createCloseAccountInstruction } from '@solana/spl-token'
 
-const FEE_RECIPIENT = new PublicKey('AtMahEVEDY7aip4raA7o6Nk6dkGtCKCJWaaSUfzgqpNN')
+const FEE_RECIPIENT = new PublicKey('AtMahEVEDY7aip4raA7o6Nk6dkGtGKCJWaaSUfzgqpNN')
 const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb')
 const FEE_RATE = 0.03
-// Max ~8 close instructions per tx to stay under Solana's tx size limit
 const MAX_CLOSES_PER_TX = 8
+
+// Known LP program IDs (Raydium, Orca, Meteora etc.)
+const LP_MINTS_KEYWORDS = ['LP', 'pool', 'whirl']
+const KNOWN_LP_PROGRAMS = [
+  '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8', // Raydium AMM
+  'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK', // Raydium CLMM
+  'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc',  // Orca Whirlpool
+  'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo',  // Meteora DLMM
+]
 
 function categorize(account) {
   const info = account.data.parsed?.info
   const decimals = info?.tokenAmount?.decimals ?? 0
+  const mint = info?.mint ?? ''
+
+  // Check if it's an LP token by mint name hints or known programs
+  if (
+    LP_MINTS_KEYWORDS.some(k => mint.toLowerCase().includes(k.toLowerCase())) ||
+    KNOWN_LP_PROGRAMS.includes(account.owner?.toString())
+  ) {
+    return 'lp'
+  }
+
+  // NFT = decimals 0, supply typically 1
   if (decimals === 0) return 'nft'
+
   return 'token'
+}
+
+function getProgramId(ownerStr) {
+  if (ownerStr === TOKEN_2022_PROGRAM_ID.toBase58()) return TOKEN_2022_PROGRAM_ID
+  return TOKEN_PROGRAM_ID
 }
 
 export function useReclaimSOL() {
@@ -36,19 +61,27 @@ export function useReclaimSOL() {
         connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID }),
         connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_2022_PROGRAM_ID }),
       ])
-      const all = [...res1.value, ...res2.value]
+
+      const all = [
+        ...res1.value.map(v => ({ ...v, ownerProgram: TOKEN_PROGRAM_ID.toBase58() })),
+        ...res2.value.map(v => ({ ...v, ownerProgram: TOKEN_2022_PROGRAM_ID.toBase58() })),
+      ]
+
       const closeable = all
         .filter(({ account }) => {
           const uiAmount = account.data.parsed?.info?.tokenAmount?.uiAmount
           const rawAmount = account.data.parsed?.info?.tokenAmount?.amount
-          return (uiAmount === 0 || uiAmount === null || Number(rawAmount) === 0) && account.lamports > 0
+          return (
+            (uiAmount === 0 || uiAmount === null || Number(rawAmount) === 0) &&
+            account.lamports > 0
+          )
         })
-        .map(({ pubkey, account }) => ({
+        .map(({ pubkey, account, ownerProgram }) => ({
           pubkey,
           lamports: account.lamports,
           mint: account.data.parsed?.info?.mint ?? '',
           category: categorize(account),
-          owner: account.owner,
+          ownerProgram, // Store as string — safe, no .equals() issues
         }))
 
       setAllAccounts(closeable)
@@ -66,56 +99,71 @@ export function useReclaimSOL() {
     setErrorMsg(null)
     setTxSignatures([])
 
-    // Split into batches of MAX_CLOSES_PER_TX
+    // Split into batches
     const batches = []
     for (let i = 0; i < accountsToClose.length; i += MAX_CLOSES_PER_TX) {
       batches.push(accountsToClose.slice(i, i + MAX_CLOSES_PER_TX))
     }
 
-    const totalLamports = accountsToClose.reduce((s, a) => s + a.lamports, 0)
-    const totalFee = Math.ceil(totalLamports * FEE_RATE)
-
     setProgress({ current: 0, total: batches.length })
 
     try {
       const sigs = []
+      let totalClosedLamports = 0
+
       for (let i = 0; i < batches.length; i++) {
         const batch = batches[i]
+        const isLastBatch = i === batches.length - 1
         setProgress({ current: i + 1, total: batches.length })
 
         const tx = new Transaction()
 
-        // Close all accounts in this batch
+        // Close accounts in this batch
+        const batchLamports = batch.reduce((s, a) => s + a.lamports, 0)
+
         for (const acc of batch) {
-          const programId = acc.owner?.equals?.(TOKEN_2022_PROGRAM_ID)
-            ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
+          const programId = getProgramId(acc.ownerProgram)
           tx.add(createCloseAccountInstruction(
-            acc.pubkey, publicKey, publicKey, [], programId
+            acc.pubkey,
+            publicKey,
+            publicKey,
+            [],
+            programId
           ))
         }
 
-        // Send fee only in the LAST batch
-        if (i === batches.length - 1 && totalFee > 0) {
-          tx.add(SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: FEE_RECIPIENT,
-            lamports: totalFee,
-          }))
+        totalClosedLamports += batchLamports
+
+        // Send accumulated fee only in the LAST batch
+        // Fee is calculated from lamports actually closed so far
+        if (isLastBatch) {
+          const totalLamports = accountsToClose.reduce((s, a) => s + a.lamports, 0)
+          const fee = Math.ceil(totalLamports * FEE_RATE)
+          if (fee > 0) {
+            tx.add(SystemProgram.transfer({
+              fromPubkey: publicKey,
+              toPubkey: FEE_RECIPIENT,
+              lamports: fee,
+            }))
+          }
         }
 
-        const { blockhash } = await connection.getLatestBlockhash()
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
         tx.recentBlockhash = blockhash
         tx.feePayer = publicKey
 
         const sig = await sendTransaction(tx, connection)
-        await connection.confirmTransaction(sig, 'confirmed')
+        await connection.confirmTransaction(
+          { signature: sig, blockhash, lastValidBlockHeight },
+          'confirmed'
+        )
         sigs.push(sig)
       }
 
       setTxSignatures(sigs)
       setStatus('done')
     } catch (err) {
-      if (err.message?.includes('User rejected')) {
+      if (err.message?.includes('User rejected') || err.message?.includes('rejected')) {
         setStatus('ready')
       } else {
         setErrorMsg(err.message)
@@ -137,7 +185,9 @@ export function useReclaimSOL() {
   const selectedLamports = selectedAccounts.reduce((s, a) => s + a.lamports, 0)
   const feeLamports = Math.ceil(selectedLamports * FEE_RATE)
   const netLamports = selectedLamports - feeLamports
-  const feePercent = selectedLamports > 0 ? ((feeLamports / selectedLamports) * 100).toFixed(1) : '0.0'
+  const feePercent = selectedLamports > 0
+    ? ((feeLamports / selectedLamports) * 100).toFixed(1)
+    : '0.0'
   const batchCount = Math.ceil(selectedAccounts.length / MAX_CLOSES_PER_TX)
 
   return {
@@ -145,7 +195,9 @@ export function useReclaimSOL() {
     selectedAccounts, selectedLamports,
     feeLamports, netLamports, feePercent, batchCount,
     txSignatures, errorMsg, progress,
-    scan, claim: () => claim(selectedAccounts), reset,
+    scan,
+    claim: () => claim(selectedAccounts),
+    reset,
     closeableCount: allAccounts.length,
   }
 }
