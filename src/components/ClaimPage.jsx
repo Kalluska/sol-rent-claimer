@@ -412,7 +412,7 @@ export default function ClaimPage({ onBack }) {
                     }
                   </button>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:16,paddingTop:4}}>
-                    {['Non-custodial','Audited','Fee on success only'].map(t => (
+                    {['Non-custodial','Open Source','Fee on success only'].map(t => (
                       <div key={t} style={{display:'flex',alignItems:'center',gap:4,color:'rgba(255,255,255,0.22)',fontSize:10}}>
                         <span>✓</span><span>{t}</span>
                       </div>
