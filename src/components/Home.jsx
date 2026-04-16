@@ -12,6 +12,67 @@ const FEATS = [
 const NAV_LINKS = [['How it works','/how-it-works'],['Security','/security'],['Docs','/docs']]
 const FOOTER_LINKS = [['Privacy','/privacy'],['Terms','/terms'],['GitHub','https://github.com/Kalluska/sol-rent-claimer']]
 
+const FAQ = [
+  {
+    q: 'Is Solint safe to use?',
+    a: 'Yes. Solint is fully non-custodial — we never have access to your private keys or funds. Every transaction is signed directly in your own wallet (e.g. Phantom). You are in full control at all times.'
+  },
+  {
+    q: 'What does the 3% fee cover?',
+    a: 'A 3% protocol fee is taken only from the SOL you successfully reclaim. There are no upfront costs, no subscriptions, and no charges if nothing is found. If you reclaim 0 SOL, you pay nothing.'
+  },
+  {
+    q: 'What happens to my tokens when I close an account?',
+    a: 'Only empty token accounts — accounts with a zero token balance — are eligible for closing. Solint never touches accounts that still hold tokens or NFTs. Closing an empty account simply returns the rent deposit to your wallet.'
+  },
+  {
+    q: 'How much SOL can I expect to recover?',
+    a: 'Each empty token account holds approximately 0.002 SOL in rent. Active Solana users who have traded many tokens often have dozens of empty accounts, which can add up to 0.05–0.5+ SOL.'
+  },
+  {
+    q: 'Which wallets are supported?',
+    a: 'Solint supports all major Solana wallets including Phantom, Solflare, Backpack, and any wallet compatible with the Solana Wallet Adapter standard.'
+  },
+  {
+    q: 'Why are multiple transactions sometimes required?',
+    a: "Solana has a transaction size limit. If you have many accounts to close, Solint automatically batches them into multiple transactions. You'll be prompted to sign each one separately."
+  },
+]
+
+function XIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635 5.903-5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    </svg>
+  )
+}
+
+function FAQItem({ q, a }) {
+  const [open, setOpen] = React.useState(false)
+  return (
+    <div
+      style={{borderRadius:16,border:'1px solid rgba(255,255,255,0.07)',background:'rgba(255,255,255,0.022)',overflow:'hidden',transition:'border-color 0.2s'}}
+      onMouseEnter={e => e.currentTarget.style.borderColor='rgba(124,58,237,0.3)'}
+      onMouseLeave={e => e.currentTarget.style.borderColor='rgba(255,255,255,0.07)'}
+    >
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'18px 22px',background:'transparent',border:'none',cursor:'pointer',textAlign:'left',gap:16,fontFamily:"'DM Sans',sans-serif"}}
+      >
+        <span style={{color:'#fff',fontSize:15,fontWeight:600}}>{q}</span>
+        <span style={{color:'#a78bfa',fontSize:20,flexShrink:0,transition:'transform 0.2s',transform:open?'rotate(45deg)':'rotate(0deg)'}}>+</span>
+      </button>
+      {open && (
+        <div style={{padding:'0 22px 18px'}}>
+          <p style={{color:'rgba(255,255,255,0.50)',fontSize:14,lineHeight:1.75,margin:0}}>{a}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+import React from 'react'
+
 export default function Home({ onScan }) {
   const { publicKey, disconnect } = useWallet()
   const { setVisible } = useWalletModal()
@@ -20,6 +81,7 @@ export default function Home({ onScan }) {
 
   return (
     <div style={{position:'relative',minHeight:'100vh',background:'#060610',overflow:'hidden',fontFamily:"'DM Sans',sans-serif"}}>
+      {/* Background effects */}
       <div style={{position:'absolute',inset:0,pointerEvents:'none',background:'radial-gradient(ellipse at 15% 50%,rgba(120,40,200,0.18) 0%,transparent 55%)'}}/>
       <div style={{position:'absolute',inset:0,pointerEvents:'none',background:'radial-gradient(ellipse at 85% 15%,rgba(60,120,255,0.13) 0%,transparent 55%)'}}/>
       <div style={{position:'absolute',inset:0,pointerEvents:'none',opacity:0.45,backgroundImage:'radial-gradient(1.5px 1.5px at 12% 22%,rgba(255,255,255,0.9) 0%,transparent 100%),radial-gradient(1px 1px at 70% 8%,rgba(255,255,255,0.7) 0%,transparent 100%),radial-gradient(1.5px 1.5px at 28% 80%,rgba(255,255,255,0.6) 0%,transparent 100%)'}}/>
@@ -33,13 +95,22 @@ export default function Home({ onScan }) {
           <img src="/logo.png" alt="Solint" style={{width:100,height:100,objectFit:'contain',filter:'drop-shadow(0 0 22px rgba(167,139,250,0.95))'}}/>
           <span style={{color:'#fff',fontWeight:700,fontSize:24,letterSpacing:'-0.03em'}}>sol<span style={{color:'#a78bfa'}}>int</span></span>
         </div>
-        <div style={{display:'flex',gap:32}}>
+        <div style={{display:'flex',alignItems:'center',gap:32}}>
           {NAV_LINKS.map(([label, href]) => (
             <a key={href} href={href} style={{color:'rgba(255,255,255,0.45)',fontSize:14,textDecoration:'none',transition:'color 0.2s'}}
               onMouseEnter={e => e.target.style.color='#fff'}
               onMouseLeave={e => e.target.style.color='rgba(255,255,255,0.45)'}
             >{label}</a>
           ))}
+          {/* X / Twitter link */}
+          <a href="https://x.com/Solintlabs" target="_blank" rel="noopener noreferrer"
+            style={{display:'flex',alignItems:'center',color:'rgba(255,255,255,0.45)',transition:'color 0.2s',textDecoration:'none'}}
+            onMouseEnter={e => e.currentTarget.style.color='#fff'}
+            onMouseLeave={e => e.currentTarget.style.color='rgba(255,255,255,0.45)'}
+            title="Follow @Solintlabs on X"
+          >
+            <XIcon size={16}/>
+          </a>
         </div>
         {!connected
           ? <button onClick={() => setVisible(true)} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 20px',borderRadius:14,background:'rgba(124,58,237,0.15)',border:'1px solid rgba(124,58,237,0.4)',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",transition:'all 0.2s'}}
@@ -74,15 +145,6 @@ export default function Home({ onScan }) {
           Scan your wallet, close empty token accounts, and recover the SOL rent that's been sitting idle — in seconds.
         </p>
 
-        <div style={{display:'flex',alignItems:'center',gap:52,marginBottom:52}}>
-          {[{v:'1.2M+',l:'Accounts Closed'},{v:'8,400',l:'SOL Reclaimed'},{v:'< 2s',l:'Scan Time'}].map((s,i) => (
-            <div key={i} style={{textAlign:'center'}}>
-              <p style={{fontSize:26,fontWeight:800,background:'linear-gradient(135deg,#c4b5fd,#93c5fd)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',margin:0}}>{s.v}</p>
-              <p style={{fontSize:11,color:'rgba(255,255,255,0.30)',marginTop:3}}>{s.l}</p>
-            </div>
-          ))}
-        </div>
-
         <button
           onClick={connected ? onScan : () => setVisible(true)}
           style={{display:'flex',alignItems:'center',gap:12,padding:'18px 48px',borderRadius:20,background:'linear-gradient(135deg,#7c3aed 0%,#6d28d9 50%,#4f46e5 100%)',border:'none',color:'#fff',fontSize:18,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",boxShadow:'0 0 40px rgba(124,58,237,0.5),0 4px 24px rgba(0,0,0,0.4)',transition:'all 0.25s',marginBottom:16}}
@@ -101,7 +163,8 @@ export default function Home({ onScan }) {
           ))}
         </div>
 
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,maxWidth:960,width:'100%'}}>
+        {/* Feature cards */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,maxWidth:960,width:'100%',marginBottom:96}}>
           {FEATS.map((f,i) => (
             <div key={i} style={{borderRadius:20,padding:'22px 20px',background:'rgba(255,255,255,0.024)',border:`1px solid ${f.b}`,backdropFilter:'blur(16px)',transition:'transform 0.3s'}}
               onMouseEnter={e => e.currentTarget.style.transform='translateY(-4px)'}
@@ -113,20 +176,43 @@ export default function Home({ onScan }) {
             </div>
           ))}
         </div>
+
+        {/* FAQ */}
+        <div style={{maxWidth:720,width:'100%'}}>
+          <h2 style={{textAlign:'center',fontSize:'clamp(28px,4vw,40px)',fontWeight:800,letterSpacing:'-0.03em',color:'#fff',marginBottom:8}}>
+            Frequently Asked Questions
+          </h2>
+          <p style={{textAlign:'center',color:'rgba(255,255,255,0.35)',fontSize:15,marginBottom:40}}>
+            Everything you need to know before connecting your wallet.
+          </p>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {FAQ.map((item, i) => <FAQItem key={i} q={item.q} a={item.a} />)}
+          </div>
+        </div>
       </main>
 
+      {/* FOOTER */}
       <footer style={{position:'relative',zIndex:10,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 40px',borderTop:'1px solid rgba(255,255,255,0.055)'}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <img src="/logo.png" alt="Solint" style={{width:36,height:36,objectFit:'contain',opacity:0.7}}/>
           <span style={{color:'rgba(255,255,255,0.30)',fontSize:13}}>© 2025 Solint Protocol</span>
         </div>
-        <div style={{display:'flex',gap:24}}>
+        <div style={{display:'flex',alignItems:'center',gap:24}}>
           {FOOTER_LINKS.map(([label, href]) => (
-            <a key={label} href={href} style={{color:'rgba(255,255,255,0.28)',fontSize:13,textDecoration:'none',transition:'color 0.2s'}}
+            <a key={label} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer"
+              style={{color:'rgba(255,255,255,0.28)',fontSize:13,textDecoration:'none',transition:'color 0.2s'}}
               onMouseEnter={e => e.target.style.color='rgba(255,255,255,0.7)'}
               onMouseLeave={e => e.target.style.color='rgba(255,255,255,0.28)'}
             >{label}</a>
           ))}
+          {/* X / Twitter */}
+          <a href="https://x.com/Solintlabs" target="_blank" rel="noopener noreferrer"
+            style={{display:'flex',alignItems:'center',gap:6,color:'rgba(255,255,255,0.28)',fontSize:13,textDecoration:'none',transition:'color 0.2s'}}
+            onMouseEnter={e => e.currentTarget.style.color='rgba(255,255,255,0.7)'}
+            onMouseLeave={e => e.currentTarget.style.color='rgba(255,255,255,0.28)'}
+          >
+            <XIcon size={13}/> @Solintlabs
+          </a>
         </div>
       </footer>
 
