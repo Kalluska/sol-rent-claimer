@@ -15,6 +15,105 @@ const shortMint = (a) => a ? a.slice(0,6)+'...'+a.slice(-4) : ''
 
 const TABS = ['CLEANUP','TOKENS','NFTS','LP']
 
+function XIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635 5.903-5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    </svg>
+  )
+}
+
+function RedditIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/>
+    </svg>
+  )
+}
+
+function ShareButtons({ netLamports, solPrice, txSignatures }) {
+  const solAmount = (netLamports / 1_000_000_000).toFixed(4)
+  const usdAmount = solPrice ? (netLamports / 1e9 * solPrice).toFixed(2) : null
+  const txSig = txSignatures[0] || ''
+
+  const tweetText = usdAmount
+    ? `Just reclaimed ${solAmount} SOL ($${usdAmount}) from empty token accounts using @Solintlabs 🧹\n\nFree to scan → usesolint.com`
+    : `Just reclaimed ${solAmount} SOL from empty token accounts using @Solintlabs 🧹\n\nFree to scan → usesolint.com`
+
+  const redditTitle = `Just reclaimed ${solAmount} SOL from empty Solana token accounts for free`
+  const redditText = `Used Solint (usesolint.com) to close ${txSignatures.length > 1 ? txSignatures.length + ' batches of ' : ''}empty token accounts and recovered ${solAmount} SOL${usdAmount ? ` ($${usdAmount})` : ''} in locked rent.\n\nNon-custodial, 3% fee only on success. Worth checking if you've been active on Solana!`
+
+  const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
+  const redditUrl = `https://www.reddit.com/submit?type=self&title=${encodeURIComponent(redditTitle)}&text=${encodeURIComponent(redditText)}`
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:10,width:'100%',maxWidth:340,margin:'0 auto'}}>
+      <p style={{color:'rgba(255,255,255,0.35)',fontSize:12,textAlign:'center',margin:0,letterSpacing:'0.06em',textTransform:'uppercase'}}>
+        Share your result
+      </p>
+      <div style={{display:'flex',gap:10}}>
+        {/* X / Twitter */}
+        <a
+          href={xUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            flex:1,
+            display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+            padding:'12px 16px',borderRadius:14,
+            background:'rgba(0,0,0,0.6)',
+            border:'1px solid rgba(255,255,255,0.12)',
+            color:'#fff',fontSize:14,fontWeight:600,
+            textDecoration:'none',fontFamily:"'DM Sans',sans-serif",
+            transition:'all 0.2s',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background='rgba(0,0,0,0.9)'
+            e.currentTarget.style.borderColor='rgba(255,255,255,0.3)'
+            e.currentTarget.style.transform='translateY(-2px)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background='rgba(0,0,0,0.6)'
+            e.currentTarget.style.borderColor='rgba(255,255,255,0.12)'
+            e.currentTarget.style.transform='translateY(0)'
+          }}
+        >
+          <XIcon size={15}/> Share on X
+        </a>
+
+        {/* Reddit */}
+        <a
+          href={redditUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            flex:1,
+            display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+            padding:'12px 16px',borderRadius:14,
+            background:'rgba(255,69,0,0.12)',
+            border:'1px solid rgba(255,69,0,0.25)',
+            color:'#ff6314',fontSize:14,fontWeight:600,
+            textDecoration:'none',fontFamily:"'DM Sans',sans-serif",
+            transition:'all 0.2s',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background='rgba(255,69,0,0.22)'
+            e.currentTarget.style.borderColor='rgba(255,69,0,0.5)'
+            e.currentTarget.style.transform='translateY(-2px)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background='rgba(255,69,0,0.12)'
+            e.currentTarget.style.borderColor='rgba(255,69,0,0.25)'
+            e.currentTarget.style.transform='translateY(0)'
+          }}
+        >
+          <RedditIcon size={15}/> Share on Reddit
+        </a>
+      </div>
+    </div>
+  )
+}
+
 export default function ClaimPage({ onBack }) {
   const { publicKey } = useWallet()
   const {
@@ -103,13 +202,28 @@ export default function ClaimPage({ onBack }) {
 
         {/* DONE */}
         {done && (
-          <div style={{borderRadius:20,padding:'32px',background:'linear-gradient(135deg,rgba(16,185,129,0.12),rgba(6,182,212,0.08))',border:'1px solid rgba(16,185,129,0.25)',textAlign:'center',marginBottom:32}}>
-            <p style={{fontSize:48,margin:'0 0 8px'}}>🎉</p>
-            <h2 style={{fontSize:22,fontWeight:700,color:'#34d399',margin:'0 0 8px'}}>SOL Reclaimed!</h2>
-            <p style={{color:'rgba(255,255,255,0.50)',marginBottom:20}}>
-              {txSignatures.length > 1 ? `Completed in ${txSignatures.length} transactions.` : 'Your transaction was confirmed on Solana mainnet.'}
-            </p>
-            <div style={{display:'flex',flexDirection:'column',gap:6,alignItems:'center',marginBottom:20}}>
+          <div style={{borderRadius:20,padding:'40px 32px',background:'linear-gradient(135deg,rgba(16,185,129,0.12),rgba(6,182,212,0.08))',border:'1px solid rgba(16,185,129,0.25)',textAlign:'center',marginBottom:32,display:'flex',flexDirection:'column',alignItems:'center',gap:20}}>
+            <p style={{fontSize:52,margin:0}}>🎉</p>
+            <div>
+              <h2 style={{fontSize:24,fontWeight:700,color:'#34d399',margin:'0 0 6px'}}>SOL Reclaimed!</h2>
+              <p style={{color:'rgba(255,255,255,0.50)',margin:0,fontSize:15}}>
+                {txSignatures.length > 1
+                  ? `Completed in ${txSignatures.length} transactions.`
+                  : 'Your transaction was confirmed on Solana mainnet.'}
+              </p>
+            </div>
+
+            {/* Amount reclaimed */}
+            <div style={{padding:'16px 32px',borderRadius:16,background:'rgba(52,211,153,0.08)',border:'1px solid rgba(52,211,153,0.2)'}}>
+              <p style={{color:'rgba(52,211,153,0.6)',fontSize:11,margin:'0 0 4px',letterSpacing:'0.1em',textTransform:'uppercase'}}>You received</p>
+              <p style={{color:'#34d399',fontSize:32,fontWeight:800,fontFamily:'DM Mono,monospace',margin:0}}>
+                {fmtSOL(netLamports)}
+                {solPrice && <span style={{color:'rgba(52,211,153,0.6)',fontSize:16,fontWeight:500,marginLeft:10}}>≈ ${(netLamports/1e9*solPrice).toFixed(2)} USD</span>}
+              </p>
+            </div>
+
+            {/* Solscan links */}
+            <div style={{display:'flex',flexDirection:'column',gap:6,alignItems:'center'}}>
               {txSignatures.map((sig, i) => (
                 <a key={sig} href={`https://solscan.io/tx/${sig}`} target="_blank" rel="noopener noreferrer"
                   style={{display:'inline-flex',alignItems:'center',gap:6,color:'#a78bfa',fontSize:14,textDecoration:'none'}}
@@ -120,6 +234,14 @@ export default function ClaimPage({ onBack }) {
                 </a>
               ))}
             </div>
+
+            {/* Share buttons */}
+            <ShareButtons
+              netLamports={netLamports}
+              solPrice={solPrice}
+              txSignatures={txSignatures}
+            />
+
             <button onClick={()=>{reset();scan()}} style={{padding:'12px 32px',borderRadius:14,background:'rgba(124,58,237,0.2)',border:'1px solid rgba(124,58,237,0.4)',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
               Scan Again
             </button>
@@ -201,8 +323,8 @@ export default function ClaimPage({ onBack }) {
                   const key = acc.pubkey.toBase58()
                   const sel = selected.has(key)
                   const solVal = fmtSOL(acc.lamports)
-                  const catColor = acc.category==='nft'?'#f59e0b':'#a78bfa'
-                  const catLabel = acc.category==='nft'?'NFT':'TOKEN'
+                  const catColor = acc.category==='nft'?'#f59e0b':acc.category==='lp'?'#22d3ee':'#a78bfa'
+                  const catLabel = acc.category==='nft'?'NFT':acc.category==='lp'?'LP':'TOKEN'
                   return (
                     <div key={key} onClick={()=>toggleOne(key)}
                       style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',borderRadius:14,background:sel?'rgba(124,58,237,0.10)':'rgba(255,255,255,0.028)',border:`1px solid ${sel?'rgba(124,58,237,0.38)':'rgba(255,255,255,0.065)'}`,cursor:'pointer',transition:'all 0.12s',userSelect:'none'}}
@@ -231,7 +353,6 @@ export default function ClaimPage({ onBack }) {
             <div style={{position:'sticky',top:24}}>
               <div style={{borderRadius:20,overflow:'hidden',background:'linear-gradient(145deg,rgba(255,255,255,0.055) 0%,rgba(255,255,255,0.018) 100%)',border:'1px solid rgba(255,255,255,0.088)',backdropFilter:'blur(28px)',boxShadow:'0 0 0 1px rgba(123,63,228,0.14),0 32px 80px rgba(0,0,0,0.6)'}}>
                 <div style={{height:1,background:'linear-gradient(90deg,transparent,rgba(167,139,250,0.55) 50%,transparent)'}}/>
-
                 <div style={{padding:'18px 22px',borderBottom:'1px solid rgba(255,255,255,0.065)'}}>
                   <h3 style={{color:'#fff',fontWeight:600,fontSize:15,margin:0}}>Summary</h3>
                   <p style={{color:'rgba(255,255,255,0.35)',fontSize:12,margin:'3px 0 0'}}>
@@ -239,10 +360,7 @@ export default function ClaimPage({ onBack }) {
                     {batchCount > 1 && <span style={{color:'rgba(167,139,250,0.7)',marginLeft:4}}>· {batchCount} transactions</span>}
                   </p>
                 </div>
-
                 <div style={{padding:'18px 22px',display:'flex',flexDirection:'column',gap:8}}>
-
-                  {/* Rows */}
                   {[
                     {l:'Selected accounts', v:`${selectedAccounts.length}`, c:'#fff'},
                     {l:'Total recoverable', v:fmtSOL(selectedLamports), c:'#fff'},
@@ -252,14 +370,10 @@ export default function ClaimPage({ onBack }) {
                       <span style={{fontSize:13,fontWeight:500,fontFamily:'DM Mono,monospace',color:r.c}}>{r.v}</span>
                     </div>
                   ))}
-
-                  {/* Fee row */}
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',borderRadius:10,background:'rgba(255,255,255,0.022)',border:'1px solid rgba(255,255,255,0.065)'}}>
                     <span style={{color:'rgba(255,255,255,0.38)',fontSize:13}}>Protocol fee (3%)</span>
                     <span style={{fontSize:13,fontWeight:500,fontFamily:'DM Mono,monospace',color:'rgba(255,255,255,0.38)'}}>− {fmtSOL(feeLamports)}</span>
                   </div>
-
-                  {/* Net */}
                   <div style={{padding:'16px 16px',borderRadius:14,background:'linear-gradient(135deg,rgba(16,185,129,0.14),rgba(6,182,212,0.09))',border:'1px solid rgba(16,185,129,0.26)',marginTop:2}}>
                     <p style={{color:'rgba(255,255,255,0.45)',fontSize:11,margin:'0 0 8px',letterSpacing:'0.08em',textTransform:'uppercase'}}>You receive</p>
                     <div style={{display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap'}}>
@@ -267,8 +381,6 @@ export default function ClaimPage({ onBack }) {
                       <p style={{color:'rgba(52,211,153,0.65)',fontSize:15,fontWeight:600,margin:0,lineHeight:1}}>≈ ${solPrice ? (netLamports/1e9*solPrice).toFixed(2) : "..."} USD</p>
                     </div>
                   </div>
-
-                  {/* Batch info */}
                   {batchCount > 1 && (
                     <div style={{padding:'10px 14px',borderRadius:10,background:'rgba(255,255,255,0.025)',border:'1px solid rgba(255,255,255,0.06)'}}>
                       <p style={{color:'rgba(255,255,255,0.35)',fontSize:12,margin:0,lineHeight:1.6}}>
@@ -276,8 +388,6 @@ export default function ClaimPage({ onBack }) {
                       </p>
                     </div>
                   )}
-
-                  {/* Claiming progress */}
                   {claiming && progress.total > 1 && (
                     <div style={{padding:'12px 14px',borderRadius:12,background:'rgba(124,58,237,0.12)',border:'1px solid rgba(124,58,237,0.25)'}}>
                       <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
@@ -289,8 +399,6 @@ export default function ClaimPage({ onBack }) {
                       </div>
                     </div>
                   )}
-
-                  {/* CTA */}
                   <button
                     onClick={claim}
                     disabled={claiming || selectedAccounts.length === 0}
@@ -303,7 +411,6 @@ export default function ClaimPage({ onBack }) {
                       : <>🧹 Clean Now — {fmtSOL(netLamports)} <ArrowRightIcon size={15}/></>
                     }
                   </button>
-
                   <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:16,paddingTop:4}}>
                     {['Non-custodial','Audited','Fee on success only'].map(t => (
                       <div key={t} style={{display:'flex',alignItems:'center',gap:4,color:'rgba(255,255,255,0.22)',fontSize:10}}>
