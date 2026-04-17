@@ -225,7 +225,7 @@ export default function Home({ onScan }) {
       </main>
 
       {/* FOOTER */}
-      <footer style={{position:'relative',zIndex:10,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 40px',borderTop:'1px solid rgba(255,255,255,0.055)'}}>
+      <footer className='sol-footer' style={{position:'relative',zIndex:10,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,padding:'16px 20px',borderTop:'1px solid rgba(255,255,255,0.055)'}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <img src="/logo.png" alt="Solint" style={{width:36,height:36,objectFit:'contain',opacity:0.7}}/>
           <span style={{color:'rgba(255,255,255,0.30)',fontSize:13}}>© 2025 Solint Protocol</span>
