@@ -197,7 +197,7 @@ export default function Home({ onScan }) {
         </div>
 
         {/* Feature cards */}
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,maxWidth:960,width:'100%',marginBottom:96}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:14,maxWidth:960,width:'100%',marginBottom:96}}>
           {FEATS.map((f,i) => (
             <div key={i} style={{borderRadius:20,padding:'22px 20px',background:'rgba(255,255,255,0.024)',border:`1px solid ${f.b}`,backdropFilter:'blur(16px)',transition:'transform 0.3s'}}
               onMouseEnter={e => e.currentTarget.style.transform='translateY(-4px)'}
