@@ -44,3 +44,10 @@ html, body, #root {
 @media (min-width: 769px) {
   .sol-mobile { display: none !important; }
 }
+
+/* Feature cards mobile */
+@media (max-width: 768px) {
+  .feat-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
