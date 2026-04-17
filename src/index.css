@@ -35,3 +35,12 @@ html, body, #root {
   background: rgba(0,0,0,0.75) !important;
   backdrop-filter: blur(8px) !important;
 }
+
+/* Mobile nav */
+@media (max-width: 768px) {
+  .sol-desktop { display: none !important; }
+  .sol-mobile { display: flex !important; }
+}
+@media (min-width: 769px) {
+  .sol-mobile { display: none !important; }
+}
