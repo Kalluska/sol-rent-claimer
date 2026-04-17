@@ -91,46 +91,78 @@ export default function Home({ onScan }) {
       <div style={{position:'absolute',inset:0,pointerEvents:'none',opacity:0.018,backgroundImage:'linear-gradient(rgba(140,100,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(140,100,255,1) 1px,transparent 1px)',backgroundSize:'80px 80px'}}/>
 
       {/* NAV */}
-      <nav style={{position:'relative',zIndex:20,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 40px',borderBottom:'1px solid rgba(255,255,255,0.055)'}}>
+      <nav style={{position:'relative',zIndex:20,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 20px',borderBottom:'1px solid rgba(255,255,255,0.055)'}}>
         <div style={{display:'flex',alignItems:'center',gap:4}}>
-          <img src="/logo.png" alt="Solint" style={{width:100,height:100,objectFit:'contain',filter:'drop-shadow(0 0 22px rgba(167,139,250,0.95))'}}/>
-          <span style={{color:'#fff',fontWeight:700,fontSize:24,letterSpacing:'-0.03em'}}>sol<span style={{color:'#a78bfa'}}>int</span></span>
+          <img src="/logo.png" alt="Solint" style={{width:72,height:72,objectFit:'contain',filter:'drop-shadow(0 0 22px rgba(167,139,250,0.95))'}}/>
+          <span style={{color:'#fff',fontWeight:700,fontSize:22,letterSpacing:'-0.03em'}}>sol<span style={{color:'#a78bfa'}}>int</span></span>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:32}}>
+        <div className="sol-desktop" style={{display:'flex',gap:28,alignItems:'center'}}>
           {NAV_LINKS.map(([label, href]) => (
-            <a key={href} href={href} style={{color:'rgba(255,255,255,0.45)',fontSize:14,textDecoration:'none',transition:'color 0.2s'}}
+            <a key={href} href={href} style={{color:'rgba(255,255,255,0.45)',fontSize:14,textDecoration:'none',transition:'color 0.2s',whiteSpace:'nowrap'}}
               onMouseEnter={e => e.target.style.color='#fff'}
               onMouseLeave={e => e.target.style.color='rgba(255,255,255,0.45)'}
             >{label}</a>
           ))}
-          {/* X / Twitter link */}
           <a href="https://x.com/Solintlabs" target="_blank" rel="noopener noreferrer"
-            style={{display:'flex',alignItems:'center',color:'rgba(255,255,255,0.45)',transition:'color 0.2s',textDecoration:'none'}}
+            style={{display:'flex',alignItems:'center',color:'rgba(255,255,255,0.45)',textDecoration:'none'}}
             onMouseEnter={e => e.currentTarget.style.color='#fff'}
             onMouseLeave={e => e.currentTarget.style.color='rgba(255,255,255,0.45)'}
-            title="Follow @Solintlabs on X"
-          >
-            <XIcon size={16}/>
-          </a>
+          ><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635 5.903-5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
         </div>
-        {!connected
-          ? <button onClick={() => setVisible(true)} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 20px',borderRadius:14,background:'rgba(124,58,237,0.15)',border:'1px solid rgba(124,58,237,0.4)',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",transition:'all 0.2s'}}
-              onMouseEnter={e => e.currentTarget.style.background='rgba(124,58,237,0.28)'}
-              onMouseLeave={e => e.currentTarget.style.background='rgba(124,58,237,0.15)'}
-            >
-              <SolanaLogo size={18}/> Connect Wallet
-            </button>
-          : <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',borderRadius:12,background:'rgba(124,58,237,0.12)',border:'1px solid rgba(124,58,237,0.28)'}}>
-                <span style={{width:8,height:8,borderRadius:'50%',background:'#34d399',display:'block'}}/>
-                <span style={{color:'#c4b5fd',fontSize:13,fontFamily:'DM Mono,monospace'}}>{short(publicKey.toBase58())}</span>
+        <div className="sol-desktop" style={{display:'flex',alignItems:'center',gap:8}}>
+          {!connected
+            ? <button onClick={() => setVisible(true)} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 20px',borderRadius:14,background:'rgba(124,58,237,0.15)',border:'1px solid rgba(124,58,237,0.4)',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",whiteSpace:'nowrap'}}
+                onMouseEnter={e => e.currentTarget.style.background='rgba(124,58,237,0.28)'}
+                onMouseLeave={e => e.currentTarget.style.background='rgba(124,58,237,0.15)'}
+              ><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Connect Wallet</button>
+            : <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',borderRadius:12,background:'rgba(124,58,237,0.12)',border:'1px solid rgba(124,58,237,0.28)'}}>
+                  <span style={{width:8,height:8,borderRadius:'50%',background:'#34d399',display:'block'}}/>
+                  <span style={{color:'#c4b5fd',fontSize:13,fontFamily:'DM Mono,monospace'}}>{short(publicKey.toBase58())}</span>
+                </div>
+                <button onClick={disconnect} style={{padding:'8px 14px',borderRadius:12,background:'transparent',border:'1px solid rgba(255,255,255,0.08)',color:'rgba(255,255,255,0.4)',fontSize:13,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>Disconnect</button>
               </div>
-              <button onClick={disconnect} style={{padding:'8px 14px',borderRadius:12,background:'transparent',border:'1px solid rgba(255,255,255,0.08)',color:'rgba(255,255,255,0.4)',fontSize:13,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>Disconnect</button>
+          }
+        </div>
+        <div className="sol-mobile" style={{alignItems:'center',gap:8}}>
+          {connected && (
+            <div style={{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',borderRadius:10,background:'rgba(124,58,237,0.12)',border:'1px solid rgba(124,58,237,0.28)'}}>
+              <span style={{width:7,height:7,borderRadius:'50%',background:'#34d399',display:'block'}}/>
+              <span style={{color:'#c4b5fd',fontSize:12,fontFamily:'DM Mono,monospace'}}>{short(publicKey.toBase58())}</span>
             </div>
-        }
+          )}
+          <button onClick={() => setMenuOpen(o => !o)}
+            style={{display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',gap:5,width:40,height:40,background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,cursor:'pointer',padding:8}}
+          >
+            <span style={{display:'block',width:18,height:2,background:'#fff',borderRadius:2}}/>
+            <span style={{display:'block',width:18,height:2,background:'#fff',borderRadius:2}}/>
+            <span style={{display:'block',width:18,height:2,background:'#fff',borderRadius:2}}/>
+          </button>
+        </div>
       </nav>
-
-      {/* HERO */}
+      {menuOpen && (
+        <div className="sol-mobile" style={{flexDirection:'column',position:'relative',zIndex:19,background:'rgba(6,6,16,0.98)',borderBottom:'1px solid rgba(255,255,255,0.08)',padding:'12px 20px 20px',gap:2}}>
+          {NAV_LINKS.map(([label, href]) => (
+            <a key={href} href={href} onClick={() => setMenuOpen(false)}
+              style={{color:'rgba(255,255,255,0.7)',fontSize:16,textDecoration:'none',padding:'12px 8px',display:'block'}}
+            >{label}</a>
+          ))}
+          <a href="https://x.com/Solintlabs" target="_blank" rel="noopener noreferrer"
+            style={{display:'flex',alignItems:'center',gap:8,color:'rgba(255,255,255,0.7)',fontSize:16,textDecoration:'none',padding:'12px 8px'}}
+          ><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635 5.903-5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> @Solintlabs</a>
+          <div style={{borderTop:'1px solid rgba(255,255,255,0.07)',marginTop:8,paddingTop:12}}>
+            {!connected
+              ? <button onClick={() => { setVisible(true); setMenuOpen(false) }}
+                  style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'14px',borderRadius:12,background:'rgba(124,58,237,0.2)',border:'1px solid rgba(124,58,237,0.4)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}
+                >Connect Wallet</button>
+              : <button onClick={() => { disconnect(); setMenuOpen(false) }}
+                  style={{width:'100%',padding:'14px',borderRadius:12,background:'transparent',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.5)',fontSize:15,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}
+                >Disconnect</button>
+            }
+          </div>
+        </div>
+      )}
+            {/* HERO */}
       <main style={{position:'relative',zIndex:10,display:'flex',flexDirection:'column',alignItems:'center',padding:'64px 24px 80px'}}>
         <div style={{display:'inline-flex',alignItems:'center',gap:8,padding:'6px 18px',borderRadius:999,border:'1px solid rgba(167,139,250,0.32)',background:'rgba(167,139,250,0.10)',marginBottom:28}}>
           <span style={{width:7,height:7,borderRadius:'50%',background:'#34d399',display:'block',animation:'pulse 2s infinite'}}/>
