@@ -267,7 +267,7 @@ export default function ClaimPage({ onBack }) {
 
         {/* MAIN CONTENT */}
         {(ready || claiming) && (
-          <div style={{display:'grid',gridTemplateColumns:'1fr 340px',gap:24,alignItems:'start'}}>
+          <div className='claim-grid' style={{display:'grid',gridTemplateColumns:'1fr 340px',gap:24,alignItems:'start'}}>
 
             {/* LEFT */}
             <div>
@@ -350,7 +350,7 @@ export default function ClaimPage({ onBack }) {
             </div>
 
             {/* RIGHT: Summary */}
-            <div style={{position:'sticky',top:24}}>
+            <div className='claim-summary' style={{position:'sticky',top:24}}>
               <div style={{borderRadius:20,overflow:'hidden',background:'linear-gradient(145deg,rgba(255,255,255,0.055) 0%,rgba(255,255,255,0.018) 100%)',border:'1px solid rgba(255,255,255,0.088)',backdropFilter:'blur(28px)',boxShadow:'0 0 0 1px rgba(123,63,228,0.14),0 32px 80px rgba(0,0,0,0.6)'}}>
                 <div style={{height:1,background:'linear-gradient(90deg,transparent,rgba(167,139,250,0.55) 50%,transparent)'}}/>
                 <div style={{padding:'18px 22px',borderBottom:'1px solid rgba(255,255,255,0.065)'}}>
